@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Herbiverse Design System - Nature meets Technology */
+
+@layer base {
+  :root {
+    /* Nature-Tech Color Palette */
+    --background: 220 25% 8%;
+    --foreground: 120 15% 95%;
+
+    --card: 220 20% 12%;
+    --card-foreground: 120 15% 90%;
+
+    --popover: 220 20% 10%;
+    --popover-foreground: 120 15% 95%;
+
+    /* Herbal Green Primary - Fixed HSL values */
+    --primary: 140 65% 25%;
+    --primary-foreground: 120 20% 95%;
+    --primary-glow: 140 75% 40%;
+
+    /* Earth Brown Secondary - Fixed HSL values */
+    --secondary: 25 35% 20%;
+    --secondary-foreground: 120 15% 90%;
+
+    /* Muted Nature Tones */
+    --muted: 220 15% 15%;
+    --muted-foreground: 120 10% 65%;
+
+    /* Glowing Plant Accent - Fixed HSL values */
+    --accent: 140 70% 45%;
+    --accent-foreground: 220 25% 8%;
+    --accent-glow: 140 80% 55%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 18%;
+    --ring: 140 60% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom Design Tokens - Fixed gradients */
+    --gradient-earth: linear-gradient(135deg, hsl(25 35% 20%), hsl(140 65% 25%));
+    --gradient-space: linear-gradient(180deg, hsl(220 25% 8%), hsl(220 25% 5%));
+    --gradient-glow: linear-gradient(135deg, hsl(140 80% 55%), hsl(140 75% 40%));
+    --gradient-card: linear-gradient(145deg, hsl(220 20% 12%), hsl(220 20% 14%));
+    
+    /* Shadows & Effects */
+    --shadow-glow: 0 0 20px hsl(140 80% 55% / 0.3);
+    --shadow-card: 0 8px 32px hsl(220 25% 4% / 0.5);
+    --shadow-elevation: 0 4px 16px hsl(220 25% 6% / 0.4);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-glow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Sidebar (kept for compatibility) */
+    --sidebar-background: 220 20% 10%;
+    --sidebar-foreground: 120 15% 85%;
+    --sidebar-primary: 140 60% 35%;
+    --sidebar-primary-foreground: 120 20% 95%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 120 15% 85%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 140 60% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background: var(--gradient-space);
+    min-height: 100vh;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Custom Utility Classes */
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px hsl(140 80% 55% / 0.6);
+  }
+  
+  .border-glow {
+    border-color: hsl(140 80% 55% / 0.5);
+    box-shadow: 0 0 10px hsl(140 80% 55% / 0.3);
+  }
+  
+  .bg-gradient-earth {
+    background: linear-gradient(135deg, hsl(25 35% 20%), hsl(140 65% 25%));
+  }
+  
+  .bg-gradient-glow {
+    background: linear-gradient(135deg, hsl(140 80% 55%), hsl(140 75% 40%));
+  }
+  
+  .bg-gradient-card {
+    background: linear-gradient(145deg, hsl(220 20% 12%), hsl(220 20% 14%));
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 20px hsl(140 80% 55% / 0.3);
+  }
+  
+  .shadow-card {
+    box-shadow: 0 8px 32px hsl(220 25% 4% / 0.5);
+  }
+  
+  .transition-glow {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-rotate-slow {
+    animation: rotate-slow 20s linear infinite;
+  }
+}
+
+/* Custom Keyframes */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 5px hsl(140 80% 55% / 0.2);
+  }
+  100% {
+    box-shadow: 0 0 25px hsl(140 80% 55% / 0.6);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+  66% {
+    transform: translateY(-5px) rotate(-1deg);
+  }
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
