@@ -4,6 +4,8 @@ import { Sphere, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import PlantMarkers from './PlantMarkers';
 import ConstellationLines from './ConstellationLines';
+import SatelliteScanEffect from './SatelliteScanEffect';
+import HeatmapOverlay from './HeatmapOverlay';
 
 interface EnhancedEarthProps {
   selectedPlant: any;
@@ -385,39 +387,18 @@ const EnhancedEarth: React.FC<EnhancedEarthProps> = ({
         timeValue={timeValue}
       />
       
+      {/* Advanced Heatmap Overlay */}
+      <HeatmapOverlay
+        heatmapEnabled={heatmapEnabled}
+        plantFilter={plantFilter}
+        timeValue={timeValue}
+      />
+      
       {/* Enhanced Satellite Scanning Effect */}
-      {selectedPlant && (
-        <group>
-          {/* Multiple scanning rings for satellite effect */}
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[2.2, 2.25, 64]} />
-            <meshBasicMaterial
-              color="#00ff88"
-              transparent
-              opacity={0.8}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[2.3, 2.35, 64]} />
-            <meshBasicMaterial
-              color="#00ccff"
-              transparent
-              opacity={0.4}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[2.4, 2.45, 64]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.2}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        </group>
-      )}
+      <SatelliteScanEffect
+        selectedPlant={selectedPlant}
+        isActive={!!selectedPlant}
+      />
     </group>
   );
 };

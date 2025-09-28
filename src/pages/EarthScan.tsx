@@ -11,13 +11,17 @@ import { useToast } from "@/hooks/use-toast";
 import EnhancedEarth from "@/components/earth-scan/EnhancedEarth";
 import EnhancedPlantInfoCard from "@/components/earth-scan/EnhancedPlantInfoCard";
 import TimelineControls from "@/components/earth-scan/TimelineControls";
+import CommunityContributions from "@/components/earth-scan/CommunityContributions";
 import { 
   User, 
   Plus, 
   Zap, 
   Leaf,
   Award,
-  Layers
+  Layers,
+  Search,
+  Filter,
+  Globe2
 } from 'lucide-react';
 
 const EarthScan = () => {
@@ -31,12 +35,33 @@ const EarthScan = () => {
   const [userLevel, setUserLevel] = useState(3);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [communitySightings, setCommunitySightings] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [detectedPlants, setDetectedPlants] = useState(25);
 
-  const handleAddSighting = () => {
+  const handleAddSighting = (sighting: any) => {
+    setCommunitySightings(prev => [...prev, sighting]);
+    setDetectedPlants(prev => prev + 1);
     toast({
-      title: "Community Feature",
-      description: "Connect to Supabase to enable community contributions, user authentication, and file storage for plant photos.",
-      duration: 4000,
+      title: "Sighting Added! 🌿",
+      description: "Your contribution has been submitted for verification.",
+      duration: 3000,
+    });
+  };
+
+  const handleXPGain = (xp: number) => {
+    setUserXP(prev => {
+      const newXP = prev + xp;
+      const newLevel = Math.floor(newXP / 500) + 1;
+      if (newLevel > userLevel) {
+        setUserLevel(newLevel);
+        toast({
+          title: `Level Up! 🎉`,
+          description: `Welcome to Level ${newLevel}! You're becoming a true plant explorer.`,
+          duration: 4000,
+        });
+      }
+      return newXP;
     });
   };
 
@@ -64,48 +89,74 @@ const EarthScan = () => {
       
       {/* Main Earth Scan Interface */}
       <main className="relative">
-        {/* Header Controls */}
+        {/* Header Controls - Living Herbal Atlas */}
         <div className="absolute top-4 left-4 right-4 z-40 flex justify-between items-center">
-          <div className="flex items-center space-x-4 bg-background/90 backdrop-blur-sm rounded-full px-6 py-3 border border-primary/20">
+          <div className="flex items-center space-x-4 bg-background/95 backdrop-blur-md rounded-2xl px-6 py-3 border border-primary/30 shadow-xl">
             <div className="flex items-center space-x-2">
-              <Leaf className="w-5 h-5 text-primary" />
-              <span className="font-bold text-primary">Herbiverse Earth Scan</span>
+              <Globe2 className="w-5 h-5 text-primary animate-pulse" />
+              <span className="font-bold text-primary">Living Herbal Atlas</span>
+              <Badge variant="secondary" className="text-xs">v2.0</Badge>
             </div>
             
             <div className="h-4 w-px bg-border" />
             
-            {/* Filters */}
-            <Tabs value={activeLayer} onValueChange={setActiveLayer} className="w-32">
+            {/* Enhanced Search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search herbs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-7 pr-3 py-1 h-8 w-32 text-xs bg-background/50 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            
+            {/* Layer Toggle */}
+            <Tabs value={activeLayer} onValueChange={setActiveLayer} className="w-36">
               <TabsList className="grid w-full grid-cols-2 h-8">
-                <TabsTrigger value="plants" className="text-xs">Plants</TabsTrigger>
-                <TabsTrigger value="climate" className="text-xs">Climate</TabsTrigger>
+                <TabsTrigger value="plants" className="text-xs">
+                  <Leaf className="w-3 h-3 mr-1" />
+                  Herbs
+                </TabsTrigger>
+                <TabsTrigger value="climate" className="text-xs">
+                  <Globe2 className="w-3 h-3 mr-1" />
+                  Climate
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             
+            {/* Plant Type Filter */}
             <Select value={plantFilter} onValueChange={setPlantFilter}>
-              <SelectTrigger className="w-32 h-8">
+              <SelectTrigger className="w-36 h-8">
                 <SelectValue placeholder="Plant Type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="medicinal">Medicinal</SelectItem>
                 <SelectItem value="aromatic">Aromatic</SelectItem>
-                <SelectItem value="rare">Rare Species</SelectItem>
+                <SelectItem value="rare">Endangered</SelectItem>
+                <SelectItem value="common">Common</SelectItem>
               </SelectContent>
             </Select>
             
+            {/* Treatment Filter */}
             <Select value={diseaseFilter} onValueChange={setDiseaseFilter}>
-              <SelectTrigger className="w-32 h-8">
+              <SelectTrigger className="w-36 h-8">
                 <SelectValue placeholder="Treatment" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Treatments</SelectItem>
-                <SelectItem value="fever">Fever</SelectItem>
-                <SelectItem value="wounds">Wounds</SelectItem>
+                <SelectItem value="fever">Fever Relief</SelectItem>
+                <SelectItem value="skin">Skin Care</SelectItem>
                 <SelectItem value="digestive">Digestive</SelectItem>
+                <SelectItem value="respiratory">Respiratory</SelectItem>
+                <SelectItem value="immunity">Immunity</SelectItem>
+                <SelectItem value="stress">Stress Relief</SelectItem>
               </SelectContent>
             </Select>
             
+            {/* Heatmap Toggle */}
             <Button
               variant={heatmapEnabled ? "default" : "outline"}
               size="sm"
@@ -113,23 +164,53 @@ const EarthScan = () => {
               className="h-8 px-3"
             >
               <Layers className="w-3 h-3 mr-1" />
-              Heatmap
+              Density Map
             </Button>
           </div>
           
-          {/* User Stats */}
-          <div className="flex items-center space-x-4 bg-background/90 backdrop-blur-sm rounded-full px-6 py-3 border border-primary/20">
+          {/* Enhanced User Stats & Progress */}
+          <div className="flex items-center space-x-4 bg-background/95 backdrop-blur-md rounded-2xl px-6 py-3 border border-primary/30 shadow-xl">
             <div className="flex items-center space-x-2">
-              <Award className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm font-medium">Level {userLevel}</span>
+              <div className="relative">
+                <Award className="w-5 h-5 text-yellow-500" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full text-[8px] text-white flex items-center justify-center font-bold">
+                  {userLevel}
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium">Explorer Level</span>
+                <span className="text-xs text-muted-foreground">Rank {userLevel}</span>
+              </div>
             </div>
+            
+            <div className="h-6 w-px bg-border" />
+            
             <div className="flex items-center space-x-2">
               <Zap className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-medium">{userXP} XP</span>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium">{userXP.toLocaleString()} XP</span>
+                <div className="w-16 h-1 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 transition-all duration-300"
+                    style={{ width: `${((userXP % 500) / 500) * 100}%` }}
+                  />
+                </div>
+              </div>
             </div>
+            
+            <div className="h-6 w-px bg-border" />
+            
+            <div className="flex items-center space-x-2">
+              <Leaf className="w-4 h-4 text-green-500" />
+              <div className="flex flex-col">
+                <span className="text-xs font-medium">{detectedPlants}</span>
+                <span className="text-xs text-muted-foreground">Plants Found</span>
+              </div>
+            </div>
+            
             <Button size="sm" className="h-8">
               <User className="w-4 h-4 mr-1" />
-              Profile
+              Explorer Profile
             </Button>
           </div>
         </div>
@@ -199,17 +280,16 @@ const EarthScan = () => {
           </div>
         </div>
         
-        {/* Bottom Controls */}
+        {/* Bottom Controls - Enhanced Community Features */}
         <div className="absolute bottom-4 left-4 right-4 z-40">
           <div className="flex justify-between items-end">
-            {/* Add Sighting Button */}
-            <Button 
-              onClick={handleAddSighting}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Plant Sighting
-            </Button>
+            {/* Community Contributions */}
+            <CommunityContributions
+              onAddSighting={handleAddSighting}
+              userXP={userXP}
+              userLevel={userLevel}
+              onXPGain={handleXPGain}
+            />
             
             {/* Enhanced Timeline Controls */}
             <TimelineControls
@@ -220,16 +300,27 @@ const EarthScan = () => {
               onReset={handleTimelineReset}
             />
             
-            {/* Stats Display */}
-            <div className="bg-background/90 backdrop-blur-sm rounded-lg px-4 py-3 border border-primary/20">
-              <div className="text-sm space-y-1">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span>Scanning Active</span>
+            {/* Enhanced Stats Display */}
+            <div className="bg-background/95 backdrop-blur-md rounded-lg px-4 py-3 border border-primary/20 shadow-lg">
+              <div className="text-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-medium">Atlas Scanning</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Live</Badge>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  5 plants detected • {heatmapEnabled ? 'Density mode' : 'Rarity mode'}
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <div>{detectedPlants} herbs mapped</div>
+                  <div>{communitySightings.length} contributions</div>
+                  <div>{heatmapEnabled ? 'Medicinal density' : 'Conservation status'}</div>
+                  <div>25 countries covered</div>
                 </div>
+                {searchQuery && (
+                  <div className="text-xs text-primary border-t pt-2">
+                    Filtering: "{searchQuery}"
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -243,40 +334,71 @@ const EarthScan = () => {
           />
         )}
         
-        {/* Legend */}
-        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-40 bg-background/90 backdrop-blur-sm rounded-lg p-4 border border-primary/20">
-          <h4 className="font-semibold mb-3 text-sm">
-            {heatmapEnabled ? 'Medicinal Density' : 'Plant Rarity'}
-          </h4>
-          <div className="space-y-2 text-xs">
+        {/* Enhanced Legend */}
+        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-40 bg-background/95 backdrop-blur-md rounded-lg p-4 border border-primary/20 shadow-lg">
+          <div className="flex items-center space-x-2 mb-3">
+            <Filter className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-sm">
+              {heatmapEnabled ? 'Medicinal Density Map' : 'Conservation Status'}
+            </h4>
+          </div>
+          <div className="space-y-3 text-xs">
             {heatmapEnabled ? (
               <>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-[#ff4444] rounded-full"></div>
-                  <span>High Medicinal Value</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-[#ff4444] rounded-full shadow-sm"></div>
+                      <span>High Value</span>
+                    </div>
+                    <Badge variant="destructive" className="text-[10px] px-1">Hot</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-[#ffaa44] rounded-full shadow-sm"></div>
+                      <span>Medium Value</span>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] px-1">Warm</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-[#44ff44] rounded-full shadow-sm"></div>
+                      <span>Lower Value</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1">Cool</Badge>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-[#ffaa44] rounded-full"></div>
-                  <span>Medium Value</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-[#44ff44] rounded-full"></div>
-                  <span>Low Value</span>
+                <div className="pt-2 border-t text-[10px] text-muted-foreground">
+                  Based on medicinal uses, cultural significance, and distribution
                 </div>
               </>
             ) : (
               <>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-[#4ecdc4] rounded-full"></div>
-                  <span>Common</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-[#4ecdc4] rounded-full shadow-sm"></div>
+                      <span>Common/Abundant</span>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] px-1">Safe</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-[#ffe66d] rounded-full shadow-sm"></div>
+                      <span>Moderate Risk</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1">Watch</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-[#ff6b6b] rounded-full shadow-sm"></div>
+                      <span>Rare/Endangered</span>
+                    </div>
+                    <Badge variant="destructive" className="text-[10px] px-1">Alert</Badge>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-[#ffe66d] rounded-full"></div>
-                  <span>Moderate</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-[#ff6b6b] rounded-full"></div>
-                  <span>Rare</span>
+                <div className="pt-2 border-t text-[10px] text-muted-foreground">
+                  Conservation status based on habitat and cultivation data
                 </div>
               </>
             )}

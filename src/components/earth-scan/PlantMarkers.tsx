@@ -156,24 +156,25 @@ const PlantMarkers: React.FC<PlantMarkersProps> = ({
     });
   }, [plantFilter]);
 
-  // Enhanced plant color system
+  // Enhanced plant color system with Living Atlas theming
   const getPlantColor = (plant: any) => {
     if (heatmapEnabled) {
-      // Enhanced heatmap: Green = abundant, Yellow = medium, Red = scarce
+      // Medicinal Density Heatmap: high medicinal value = red, medium = orange, low = green
       const useCount = plant.medicinalUses.length;
       const distribution = plant.distribution.length;
-      const density = useCount * distribution;
+      const culturalValue = plant.culturalSignificance.length > 50 ? 2 : 1;
+      const density = useCount * distribution * culturalValue;
       
-      if (density > 15) return '#00ff44'; // Abundant - green
-      if (density > 10) return '#ffff00'; // Medium - yellow  
-      return '#ff4444'; // Scarce - red
+      if (density > 20) return '#ff4444'; // High medicinal value - red
+      if (density > 12) return '#ffaa44'; // Medium value - orange
+      return '#44ff44'; // Low value - green
     }
     
-    // Rarity-based coloring with more vibrant colors
+    // Rarity-based coloring for conservation awareness
     switch (plant.rarity) {
-      case 'Rare': return '#ff3366';      // Bright red for rare
-      case 'Moderate': return '#ffaa00';  // Orange for moderate
-      default: return '#00ffaa';          // Cyan for common
+      case 'Rare': return '#ff6b6b';      // Red for endangered/rare
+      case 'Moderate': return '#ffe66d';  // Yellow for moderate
+      default: return '#4ecdc4';          // Teal for common/abundant
     }
   };
 
@@ -220,38 +221,77 @@ const PlantMarkers: React.FC<PlantMarkersProps> = ({
               </mesh>
             ))}
             
-            {/* Enhanced sprout animation with realistic growth */}
-            <group position={[0, 0.15, 0]}>
-              {/* Stem */}
+            {/* Enhanced growth animation with realistic plant development */}
+            <group position={[0, 0.15, 0]} scale={isSelected ? [1.2, 1.2, 1.2] : [1, 1, 1]}>
+              {/* Growing stem with texture variation */}
               <mesh position={[0, 0.05, 0]}>
                 <cylinderGeometry args={[0.005, 0.008, 0.1, 8]} />
                 <meshBasicMaterial color="#228B22" />
               </mesh>
               
-              {/* Main leaves - animated */}
-              <mesh position={[0.025, 0.08, 0]} rotation={[0, 0, Math.PI / 6]}>
-                <planeGeometry args={[0.04, 0.02]} />
+              {/* Realistic leaf growth stages */}
+              {/* Young leaves - smaller and lighter */}
+              <mesh position={[0.02, 0.06, 0]} rotation={[0, 0, Math.PI / 8]} scale={[0.8, 0.8, 1]}>
+                <planeGeometry args={[0.03, 0.015]} />
+                <meshBasicMaterial color="#90EE90" transparent opacity={0.8} />
+              </mesh>
+              <mesh position={[-0.02, 0.06, 0]} rotation={[0, 0, -Math.PI / 8]} scale={[0.8, 0.8, 1]}>
+                <planeGeometry args={[0.03, 0.015]} />
+                <meshBasicMaterial color="#90EE90" transparent opacity={0.8} />
+              </mesh>
+              
+              {/* Mature leaves - larger and darker */}
+              <mesh position={[0.035, 0.09, 0]} rotation={[0, 0, Math.PI / 5]}>
+                <planeGeometry args={[0.05, 0.025]} />
                 <meshBasicMaterial color="#32CD32" transparent opacity={0.9} />
               </mesh>
-              <mesh position={[-0.025, 0.08, 0]} rotation={[0, 0, -Math.PI / 6]}>
-                <planeGeometry args={[0.04, 0.02]} />
+              <mesh position={[-0.035, 0.09, 0]} rotation={[0, 0, -Math.PI / 5]}>
+                <planeGeometry args={[0.05, 0.025]} />
                 <meshBasicMaterial color="#32CD32" transparent opacity={0.9} />
               </mesh>
               
-              {/* Small growing buds */}
-              <Sphere args={[0.015, 8, 8]} position={[0, 0.1, 0]}>
-                <meshBasicMaterial color="#ADFF2F" />
+              {/* Growth tip - actively growing */}
+              <Sphere args={[0.012, 8, 8]} position={[0, 0.12, 0]}>
+                <meshBasicMaterial color="#ADFF2F" transparent opacity={0.9} />
               </Sphere>
               
-              {/* Tiny emerging leaves at top */}
-              <mesh position={[0.01, 0.11, 0]} rotation={[0, 0, Math.PI / 8]}>
+              {/* New leaf buds emerging */}
+              <mesh position={[0.015, 0.115, 0]} rotation={[0, 0, Math.PI / 12]} scale={[0.6, 0.6, 1]}>
                 <planeGeometry args={[0.02, 0.008]} />
-                <meshBasicMaterial color="#90EE90" transparent opacity={0.7} />
+                <meshBasicMaterial color="#98FB98" transparent opacity={0.7} />
               </mesh>
-              <mesh position={[-0.01, 0.11, 0]} rotation={[0, 0, -Math.PI / 8]}>
+              <mesh position={[-0.015, 0.115, 0]} rotation={[0, 0, -Math.PI / 12]} scale={[0.6, 0.6, 1]}>
                 <planeGeometry args={[0.02, 0.008]} />
-                <meshBasicMaterial color="#90EE90" transparent opacity={0.7} />
+                <meshBasicMaterial color="#98FB98" transparent opacity={0.7} />
               </mesh>
+              
+              {/* Root system indication (very subtle) */}
+              {isSelected && (
+                <group position={[0, -0.05, 0]}>
+                  {[0, 1, 2].map(i => (
+                    <mesh key={`root-${i}`} position={[
+                      Math.cos(i * Math.PI / 1.5) * 0.02,
+                      -0.02,
+                      Math.sin(i * Math.PI / 1.5) * 0.02
+                    ]} rotation={[Math.PI / 6, 0, i * Math.PI / 3]}>
+                      <cylinderGeometry args={[0.002, 0.001, 0.03, 4]} />
+                      <meshBasicMaterial color="#8B4513" transparent opacity={0.5} />
+                    </mesh>
+                  ))}
+                </group>
+              )}
+              
+              {/* Herb-specific features */}
+              {plant.name === 'Lavender' && (
+                <Sphere args={[0.008, 6, 6]} position={[0, 0.13, 0]}>
+                  <meshBasicMaterial color="#9370DB" transparent opacity={0.8} />
+                </Sphere>
+              )}
+              {plant.name === 'Tulsi' && (
+                <Sphere args={[0.006, 6, 6]} position={[0, 0.13, 0]}>
+                  <meshBasicMaterial color="#DDA0DD" transparent opacity={0.8} />
+                </Sphere>
+              )}
             </group>
             
             {/* Enhanced scanning effect when selected */}
