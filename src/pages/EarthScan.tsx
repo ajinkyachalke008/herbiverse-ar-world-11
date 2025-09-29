@@ -258,6 +258,7 @@ const EarthScan = () => {
               timeValue={timeValue[0]}
               activeLayer={activeLayer}
               plantFilter={plantFilter}
+              diseaseFilter={diseaseFilter}
               heatmapEnabled={heatmapEnabled}
             />
             

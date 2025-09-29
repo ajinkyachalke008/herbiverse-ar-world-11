@@ -13,6 +13,7 @@ interface EnhancedEarthProps {
   timeValue: number;
   activeLayer: string;
   plantFilter: string;
+  diseaseFilter: string;
   heatmapEnabled: boolean;
 }
 
@@ -22,6 +23,7 @@ const EnhancedEarth: React.FC<EnhancedEarthProps> = ({
   timeValue,
   activeLayer,
   plantFilter,
+  diseaseFilter,
   heatmapEnabled
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
