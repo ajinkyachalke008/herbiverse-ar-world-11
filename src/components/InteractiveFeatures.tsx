@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Scan, Globe, Gamepad2, Map, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import ScanPlantButton from "@/components/ScanPlantButton";
 import plantIdentificationImage from "@/assets/features/plant-identification.jpg";
 import earthScannerImage from "@/assets/features/earth-scanner.jpg";
 import herbalQuestImage from "@/assets/features/herbal-quest.jpg";
@@ -190,10 +191,7 @@ const InteractiveFeatures = () => {
               Start exploring the Herbiverse with our interactive plant scanner.
               Simply point your camera at any plant to discover its healing properties.
             </p>
-            <Button variant="hero" size="xl" className="group">
-              <Scan className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
-              Launch Plant Scanner
-            </Button>
+            <ScanPlantButton variant="hero" size="xl" className="group" />
           </Card>
         </motion.div>
       </div>

@@ -1,0 +1,523 @@
+import React, { useState, useRef, useCallback } from 'react';
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Scan, 
+  Camera, 
+  Image as ImageIcon, 
+  FileImage, 
+  X, 
+  RefreshCw, 
+  Check,
+  AlertCircle,
+  Info
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface ScanPlantButtonProps {
+  variant?: "hero" | "default" | "outline";
+  size?: "sm" | "default" | "lg" | "xl";
+  className?: string;
+}
+
+const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({ 
+  variant = "hero", 
+  size = "xl", 
+  className = "" 
+}) => {
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [showPermissionHelper, setShowPermissionHelper] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<'en' | 'mr'>('en');
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Bilingual text
+  const text = {
+    en: {
+      scanPlant: "Scan a Plant",
+      camera: "Camera — Take Photo",
+      gallery: "Gallery — Choose Photo", 
+      files: "Files — Browse",
+      cancel: "Cancel",
+      permissionHelper: "We need access to your camera to take a photo. We won't store it without your permission.",
+      allow: "Allow Camera",
+      denied: "Camera access denied. To use camera, allow camera permission in your browser settings.",
+      noCamera: "Camera not available. Please use Gallery or Files instead.",
+      processing: "Processing image...",
+      captured: "Image captured! Detection coming soon 🌱",
+      retake: "Retake / Choose Another",
+      useImage: "Use This Image",
+      fileName: "Selected File",
+      unsupportedFile: "Please select an image file (JPG, PNG, WEBP)",
+      cameraError: "Camera error. Please try again or use Gallery/Files."
+    },
+    mr: {
+      scanPlant: "वनस्पती स्कॅन करा",
+      camera: "कॅमेरा — फोटो घ्या",
+      gallery: "गॅलरी — फोटो निवडा",
+      files: "फाइल्स — ब्राउझ करा", 
+      cancel: "रद्द करा",
+      permissionHelper: "कॅमेरा वापरण्यास आम्हाला परवानगी हवी आहे — फोटो घेण्यासाठी. तुमची प्रतिना आम्ही परवानगीशिवाय जपणार नाही.",
+      allow: "कॅमेरा अनुमती द्या",
+      denied: "कॅमेरा प्रवेश नाकारला. कॅमेरा वापरण्यासाठी, आपल्या ब्राउझर सेटिंग्जमध्ये कॅमेरा परवानगी द्या.",
+      noCamera: "कॅमेरा उपलब्ध नाही. कृपया गॅलरी किंवा फाइल्स वापरा.",
+      processing: "प्रतिमा प्रक्रिया करत आहे...",
+      captured: "फोटो घेतला! ओळख सुविधा लवकर येत आहे 🌱",
+      retake: "पुन्हा घ्या / दुसरी निवडा",
+      useImage: "ही प्रतिमा वापरा",
+      fileName: "निवडलेली फाइल",
+      unsupportedFile: "कृपया प्रतिमा फाइल निवडा (JPG, PNG, WEBP)",
+      cameraError: "कॅमेरा त्रुटी. कृपया पुन्हा प्रयत्न करा किंवा गॅलरी/फाइल्स वापरा."
+    }
+  };
+
+  const resetState = useCallback(() => {
+    setShowActionSheet(false);
+    setShowCamera(false);
+    setShowPermissionHelper(false);
+    setCapturedImage(null);
+    setImageFile(null);
+    setIsProcessing(false);
+    setError(null);
+    
+    // Stop camera stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const handleScanClick = () => {
+    setIsOpen(true);
+    setShowActionSheet(true);
+  };
+
+  const handleClose = () => {
+    resetState();
+    setIsOpen(false);
+  };
+
+  const handleCameraOption = async () => {
+    setShowActionSheet(false);
+    setShowPermissionHelper(true);
+  };
+
+  const handleAllowCamera = async () => {
+    setShowPermissionHelper(false);
+    setError(null);
+    
+    try {
+      // Check if camera is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setShowCamera(true);
+      }
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError(text[language].denied);
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError(text[language].noCamera);
+      } else {
+        setError(text[language].cameraError);
+      }
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    const context = canvas.getContext('2d');
+    
+    if (!context) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    setCapturedImage(imageDataUrl);
+    setShowCamera(false);
+    
+    // Stop camera stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    toast({
+      title: "📸 Photo Captured!",
+      description: text[language].captured,
+      duration: 3000,
+    });
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, isGallery = false) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      setError(text[language].unsupportedFile);
+      return;
+    }
+    
+    setError(null);
+    setImageFile(file);
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCapturedImage(e.target?.result as string);
+      setShowActionSheet(false);
+    };
+    reader.readAsDataURL(file);
+    
+    toast({
+      title: isGallery ? "🖼️ Image Selected from Gallery" : "📁 File Selected",
+      description: text[language].captured,
+      duration: 3000,
+    });
+  };
+
+  const handleGalleryOption = () => {
+    galleryInputRef.current?.click();
+  };
+
+  const handleFilesOption = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRetake = () => {
+    setCapturedImage(null);
+    setImageFile(null);
+    setShowActionSheet(true);
+  };
+
+  const handleUseImage = () => {
+    setIsProcessing(true);
+    
+    // Simulate processing
+    setTimeout(() => {
+      setIsProcessing(false);
+      toast({
+        title: "🌿 Plant Analysis Complete!",
+        description: "This is a demo - actual AI identification will be implemented soon.",
+        duration: 5000,
+      });
+      handleClose();
+    }, 2000);
+  };
+
+  return (
+    <>
+      <Button 
+        variant={variant} 
+        size={size} 
+        className={`group ${className}`}
+        onClick={handleScanClick}
+      >
+        <Scan className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
+        {text[language].scanPlant}
+      </Button>
+
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center">
+                <Scan className="w-5 h-5 mr-2 text-primary" />
+                {text[language].scanPlant}
+              </span>
+              <div className="flex items-center space-x-2">
+                <Badge 
+                  variant={language === 'en' ? 'default' : 'outline'} 
+                  className="cursor-pointer text-xs"
+                  onClick={() => setLanguage('en')}
+                >
+                  EN
+                </Badge>
+                <Badge 
+                  variant={language === 'mr' ? 'default' : 'outline'} 
+                  className="cursor-pointer text-xs"
+                  onClick={() => setLanguage('mr')}
+                >
+                  मर
+                </Badge>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <AnimatePresence mode="wait">
+            {/* Action Sheet */}
+            {showActionSheet && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-3"
+              >
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start h-14 text-left"
+                  onClick={handleCameraOption}
+                >
+                  <Camera className="w-5 h-5 mr-3 text-blue-500" />
+                  <span>{text[language].camera}</span>
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start h-14 text-left"
+                  onClick={handleGalleryOption}
+                >
+                  <ImageIcon className="w-5 h-5 mr-3 text-green-500" />
+                  <span>{text[language].gallery}</span>
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start h-14 text-left"
+                  onClick={handleFilesOption}
+                >
+                  <FileImage className="w-5 h-5 mr-3 text-purple-500" />
+                  <span>{text[language].files}</span>
+                </Button>
+                
+                <Button 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={handleClose}
+                >
+                  {text[language].cancel}
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Permission Helper */}
+            {showPermissionHelper && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-4"
+              >
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    {text[language].permissionHelper}
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="flex space-x-3">
+                  <Button 
+                    className="flex-1"
+                    onClick={handleAllowCamera}
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    {text[language].allow}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowPermissionHelper(false)}
+                  >
+                    {text[language].cancel}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Camera View */}
+            {showCamera && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="space-y-4"
+              >
+                <div className="relative rounded-lg overflow-hidden bg-black">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-64 object-cover"
+                  />
+                  <div className="absolute inset-0 border-2 border-dashed border-white/50 m-4 rounded-lg pointer-events-none" />
+                </div>
+                
+                <div className="flex justify-center space-x-3">
+                  <Button 
+                    size="lg"
+                    onClick={capturePhoto}
+                    className="rounded-full w-16 h-16"
+                  >
+                    <Camera className="w-6 h-6" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCamera(false)}
+                  >
+                    {text[language].cancel}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Image Preview */}
+            {capturedImage && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-4"
+              >
+                <div className="relative rounded-lg overflow-hidden">
+                  <img 
+                    src={capturedImage} 
+                    alt="Captured plant" 
+                    className="w-full h-64 object-cover"
+                  />
+                  {imageFile && (
+                    <div className="absolute top-2 left-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {text[language].fileName}: {imageFile.name}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
+                {isProcessing ? (
+                  <div className="text-center py-4">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="inline-block"
+                    >
+                      <RefreshCw className="w-8 h-8 text-primary" />
+                    </motion.div>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {text[language].processing}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Alert>
+                      <Check className="h-4 w-4" />
+                      <AlertDescription>
+                        {text[language].captured}
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="flex space-x-3">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={handleRetake}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        {text[language].retake}
+                      </Button>
+                      <Button 
+                        className="flex-1"
+                        onClick={handleUseImage}
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        {text[language].useImage}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+                
+                <div className="mt-4 flex space-x-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={handleGalleryOption}
+                  >
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    {text[language].gallery}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={handleFilesOption}
+                  >
+                    <FileImage className="w-4 h-4 mr-2" />
+                    {text[language].files}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Hidden File Inputs */}
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => handleFileSelect(e, true)}
+          />
+          
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFileSelect(e, false)}
+          />
+          
+          <canvas ref={canvasRef} className="hidden" />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export default ScanPlantButton;

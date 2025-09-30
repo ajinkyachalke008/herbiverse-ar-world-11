@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Scan, Globe, Leaf, Users } from "lucide-react";
 import heroEarth from "@/assets/hero-earth.jpg";
+import ScanPlantButton from "@/components/ScanPlantButton";
 
 const HeroSection = () => {
   return (
@@ -110,10 +111,7 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
           >
-            <Button variant="hero" size="xl" className="group">
-              <Scan className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-              Scan a Plant
-            </Button>
+            <ScanPlantButton variant="hero" size="xl" className="group" />
             <Button variant="earth" size="xl" className="group">
               <Leaf className="w-5 h-5 group-hover:animate-pulse" />
               Explore 3D Garden
