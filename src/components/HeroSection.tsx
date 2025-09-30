@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Scan, Globe, Leaf, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import heroEarth from "@/assets/hero-earth.jpg";
 import ScanPlantButton from "@/components/ScanPlantButton";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Earth Image */}
@@ -116,7 +119,12 @@ const HeroSection = () => {
               <Leaf className="w-5 h-5 group-hover:animate-pulse" />
               Explore 3D Garden
             </Button>
-            <Button variant="scan" size="xl" className="group">
+            <Button 
+              variant="scan" 
+              size="xl" 
+              className="group"
+              onClick={() => navigate('/earth-scan')}
+            >
               <Globe className="w-5 h-5 group-hover:animate-earth-scan" />
               Scan the Earth
             </Button>
