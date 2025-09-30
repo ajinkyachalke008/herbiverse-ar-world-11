@@ -148,6 +148,12 @@ const InteractiveFeatures = () => {
                           <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                         </Button>
                       </Link>
+                    ) : feature.title === "AI Plant Identification" ? (
+                      <ScanPlantButton 
+                        variant="outline" 
+                        size="default"
+                        className="w-full group-hover:border-accent-glow group-hover:bg-accent/10 group-hover:shadow-glow transition-all duration-300" 
+                      />
                     ) : (
                       <Button 
                         variant="outline" 
