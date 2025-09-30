@@ -15,7 +15,7 @@ import {
   AlertCircle,
   Info
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ScanPlantButtonProps {
   variant?: "hero" | "default" | "outline";
