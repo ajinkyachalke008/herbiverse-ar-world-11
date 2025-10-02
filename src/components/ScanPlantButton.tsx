@@ -16,6 +16,7 @@ import {
   Info
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import PlantIdentificationCard from "./PlantIdentificationCard";
 
 interface ScanPlantButtonProps {
   variant?: "hero" | "default" | "outline";
@@ -38,6 +39,8 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'mr'>('en');
+  const [plantData, setPlantData] = useState<any>(null);
+  const [showResults, setShowResults] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -93,6 +96,8 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
     setImageFile(null);
     setIsProcessing(false);
     setError(null);
+    setPlantData(null);
+    setShowResults(false);
     
     // Stop camera stream
     if (streamRef.current) {
@@ -224,19 +229,55 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
     setShowActionSheet(true);
   };
 
-  const handleUseImage = () => {
-    setIsProcessing(true);
+  const handleUseImage = async () => {
+    if (!capturedImage) return;
     
-    // Simulate processing
-    setTimeout(() => {
-      setIsProcessing(false);
+    setIsProcessing(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/identify-plant`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ image: capturedImage }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to identify plant');
+      }
+
+      const identifiedPlant = data.data;
+      
+      // Show results card
+      setPlantData(identifiedPlant);
+      setShowResults(true);
+      
       toast({
-        title: "🌿 Plant Analysis Complete!",
-        description: "This is a demo - actual AI identification will be implemented soon.",
+        title: `🌿 ${identifiedPlant.commonName}`,
+        description: `${identifiedPlant.scientificName} - Confidence: ${identifiedPlant.confidence}`,
         duration: 5000,
       });
-      handleClose();
-    }, 2000);
+    } catch (err) {
+      console.error('Plant identification error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to identify plant';
+      setError(errorMessage);
+      
+      toast({
+        title: "❌ Identification Failed",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -491,6 +532,21 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
                     {text[language].files}
                   </Button>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Results Display */}
+            {showResults && plantData && capturedImage && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <PlantIdentificationCard
+                  plantData={plantData}
+                  imageUrl={capturedImage}
+                  onClose={handleClose}
+                />
               </motion.div>
             )}
           </AnimatePresence>
