@@ -102,6 +102,73 @@ const Footer = () => {
           </motion.div>
         </div>
 
+        {/* References & Resources Section */}
+        <motion.div 
+          className="mt-12 pt-8 border-t border-border"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          viewport={{ once: true }}
+        >
+          <h3 className="text-lg font-semibold text-accent mb-4">References & Resources</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[
+              "Indian Medicinal Plants Database (FRLHT)",
+              "OSADHI Database",
+              "IMPPAT Database",
+              "Medicinal Plant Database (Botanical Survey of India)",
+              "Rig Veda (Medicinal Plants Section)",
+              "Atharva Veda (Medicinal Plants Section)",
+              "Yajur Veda (Medicinal Plants Section)",
+              "Charaka Samhita",
+              "Sushruta Samhita",
+              "Padma Purana",
+              "Vishnu Purana and Other Puranas",
+              "E-Charak Knowledge Resources (Ministry of AYUSH)",
+              "ENVIS Database (FRLHT Environmental Information System on Medicinal Plants)",
+              "Central Council for Research in Ayurvedic Sciences (CCRAS) Resources"
+            ].map((resource, index) => (
+              <div key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
+                <span className="text-accent mt-0.5">•</span>
+                <span>{resource}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Website Builder Information */}
+        <motion.div 
+          className="mt-12 pt-8 border-t border-border"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          viewport={{ once: true }}
+        >
+          <h3 className="text-lg font-semibold text-accent mb-4">Website Builder</h3>
+          <div className="bg-card/30 backdrop-blur-sm rounded-lg p-6 border border-border">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Name</p>
+                <p className="text-foreground font-medium">Ajinkya Arun Chalke</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">College</p>
+                <p className="text-foreground font-medium">Government College of Engineering, Karad</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Contact</p>
+                <p className="text-foreground font-medium">9270134411</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Email</p>
+                <a href="mailto:ajinkyachalke008@gmail.com" className="text-accent hover:underline font-medium">
+                  ajinkyachalke008@gmail.com
+                </a>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Bottom Section */}
         <motion.div 
           className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center"
@@ -111,7 +178,7 @@ const Footer = () => {
           viewport={{ once: true }}
         >
           <p className="text-muted-foreground text-sm mb-4 md:mb-0">
-            © 2024 Herbiverse. Empowering natural healing through technology.
+            © 2025 Herbiverse. Empowering natural healing through technology.
           </p>
           <div className="flex items-center space-x-6 text-sm">
             <a href="#" className="text-muted-foreground hover:text-accent transition-colors">
@@ -131,7 +198,7 @@ const Footer = () => {
           className="mt-8 text-center"
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
           viewport={{ once: true }}
         >
           <div className="inline-flex items-center space-x-2 text-sm text-accent">
@@ -139,6 +206,31 @@ const Footer = () => {
             <span>Made with care for our planet and its healing plants</span>
             <Globe className="w-4 h-4" />
           </div>
+        </motion.div>
+
+        {/* Futuristic Signature */}
+        <motion.div 
+          className="mt-8 text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.7 }}
+          viewport={{ once: true }}
+        >
+          <motion.div
+            className="inline-block text-glow animate-pulse-glow"
+            animate={{ 
+              textShadow: [
+                "0 0 10px hsl(var(--accent)), 0 0 20px hsl(var(--accent))",
+                "0 0 20px hsl(var(--accent)), 0 0 30px hsl(var(--accent)), 0 0 40px hsl(var(--primary))",
+                "0 0 10px hsl(var(--accent)), 0 0 20px hsl(var(--accent))"
+              ]
+            }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <span className="text-xl font-bold bg-gradient-glow bg-clip-text text-transparent">
+              ✨ Made by Ajinkya ✨
+            </span>
+          </motion.div>
         </motion.div>
       </div>
     </footer>
