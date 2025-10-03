@@ -179,8 +179,10 @@ const EnhancedEarth: React.FC<EnhancedEarthProps> = ({
     return new THREE.MeshPhongMaterial({
       map: texture,
       color: 0xffffff,
-      shininess: 30,
-      specular: 0x222222,
+      shininess: 60,
+      specular: 0x444444,
+      emissive: 0x112211,
+      emissiveIntensity: 0.15,
       transparent: false,
     });
   }, []);
@@ -313,7 +315,7 @@ const EnhancedEarth: React.FC<EnhancedEarthProps> = ({
         void main() {
           float intensity = pow(0.8 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
           float pulse = 0.8 + 0.2 * sin(time * 2.0);
-          gl_FragColor = vec4(color, intensity * pulse * 0.3);
+          gl_FragColor = vec4(color, intensity * pulse * 0.5);
         }
       `,
       blending: THREE.AdditiveBlending,
@@ -330,20 +332,6 @@ const EnhancedEarth: React.FC<EnhancedEarthProps> = ({
 
   return (
     <group>
-      {/* Orbit Controls for zoom and pan */}
-      <OrbitControls 
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={true}
-        zoomSpeed={0.6}
-        panSpeed={0.5}
-        rotateSpeed={0.4}
-        minDistance={3}
-        maxDistance={15}
-        autoRotate={false}
-        autoRotateSpeed={0.5}
-      />
-      
       {/* Main Earth Sphere with realistic HD materials */}
       <Sphere ref={meshRef} args={[2, 256, 128]}>
         <primitive object={earthMaterial} attach="material" />

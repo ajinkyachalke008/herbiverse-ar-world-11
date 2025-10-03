@@ -210,26 +210,81 @@ const Footer = () => {
 
         {/* Futuristic Signature */}
         <motion.div 
-          className="mt-8 text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
+          className="mt-10 text-center pb-6"
+          initial={{ opacity: 0, scale: 0.8 }}
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.7 }}
           viewport={{ once: true }}
         >
           <motion.div
-            className="inline-block text-glow animate-pulse-glow"
+            className="inline-block relative cursor-pointer group"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             animate={{ 
-              textShadow: [
-                "0 0 10px hsl(var(--accent)), 0 0 20px hsl(var(--accent))",
-                "0 0 20px hsl(var(--accent)), 0 0 30px hsl(var(--accent)), 0 0 40px hsl(var(--primary))",
-                "0 0 10px hsl(var(--accent)), 0 0 20px hsl(var(--accent))"
+              filter: [
+                "drop-shadow(0 0 20px hsl(var(--accent))) drop-shadow(0 0 40px hsl(var(--primary-glow)))",
+                "drop-shadow(0 0 30px hsl(var(--primary))) drop-shadow(0 0 60px hsl(var(--accent)))",
+                "drop-shadow(0 0 20px hsl(var(--accent))) drop-shadow(0 0 40px hsl(var(--primary-glow)))"
               ]
             }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <span className="text-xl font-bold bg-gradient-glow bg-clip-text text-transparent">
-              ✨ Made by Ajinkya ✨
-            </span>
+            {/* Glowing background effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/30 to-primary-glow/20 blur-2xl rounded-full scale-150 animate-pulse" />
+            
+            {/* Sparkle effects */}
+            <div className="absolute inset-0 overflow-visible">
+              {[...Array(6)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 bg-accent rounded-full"
+                  style={{
+                    left: `${10 + i * 15}%`,
+                    top: `${20 + (i % 2) * 60}%`,
+                  }}
+                  animate={{
+                    scale: [0, 1.5, 0],
+                    opacity: [0, 1, 0],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    delay: i * 0.3,
+                    ease: "easeInOut"
+                  }}
+                />
+              ))}
+            </div>
+            
+            {/* Main text with multiple effects */}
+            <motion.div
+              className="relative z-10 px-8 py-4 rounded-2xl bg-gradient-to-r from-card/80 via-card/60 to-card/80 backdrop-blur-md border-2 border-accent/50 shadow-[0_0_30px_hsl(var(--accent)/0.5)]"
+              animate={{
+                borderColor: [
+                  "hsl(var(--accent) / 0.5)",
+                  "hsl(var(--primary) / 0.8)",
+                  "hsl(var(--accent) / 0.5)"
+                ]
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <span className="text-3xl font-extrabold bg-gradient-to-r from-accent via-primary-glow to-primary bg-clip-text text-transparent animate-pulse-glow drop-shadow-[0_0_20px_hsl(var(--accent))]">
+                ✨ Made by Ajinkya ✨
+              </span>
+              
+              {/* Shimmer effect overlay */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/30 to-transparent"
+                animate={{
+                  x: ["-200%", "200%"]
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+              />
+            </motion.div>
           </motion.div>
         </motion.div>
       </div>
