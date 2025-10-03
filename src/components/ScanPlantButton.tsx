@@ -192,27 +192,55 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
     
-    // Check if it's an image
+    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError(text[language].unsupportedFile);
+      toast({
+        title: "❌ Invalid File Type",
+        description: text[language].unsupportedFile,
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      const errorMsg = language === 'en' 
+        ? 'Image too large. Please select an image smaller than 10MB.' 
+        : 'प्रतिमा खूप मोठी आहे. कृपया 10MB पेक्षा लहान प्रतिमा निवडा.';
+      setError(errorMsg);
+      toast({
+        title: "❌ File Too Large",
+        description: errorMsg,
+        variant: "destructive",
+        duration: 4000,
+      });
       return;
     }
     
     setError(null);
     setImageFile(file);
+    setIsProcessing(true);
     
     const reader = new FileReader();
     reader.onload = (e) => {
       setCapturedImage(e.target?.result as string);
       setShowActionSheet(false);
+      setIsProcessing(false);
+      
+      toast({
+        title: isGallery ? "🖼️ Image Selected from Gallery" : "📁 File Selected",
+        description: text[language].captured,
+        duration: 3000,
+      });
+    };
+    reader.onerror = () => {
+      setError(language === 'en' ? 'Failed to read image file' : 'प्रतिमा फाइल वाचता आली नाही');
+      setIsProcessing(false);
     };
     reader.readAsDataURL(file);
-    
-    toast({
-      title: isGallery ? "🖼️ Image Selected from Gallery" : "📁 File Selected",
-      description: text[language].captured,
-      duration: 3000,
-    });
   };
 
   const handleGalleryOption = () => {
@@ -555,8 +583,7 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
           <input
             ref={galleryInputRef}
             type="file"
-            accept="image/*"
-            capture="environment"
+            accept="image/jpeg,image/png,image/webp,image/heic"
             className="hidden"
             onChange={(e) => handleFileSelect(e, true)}
           />
@@ -564,7 +591,7 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/heic"
             className="hidden"
             onChange={(e) => handleFileSelect(e, false)}
           />
