@@ -34,6 +34,7 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [showPermissionHelper, setShowPermissionHelper] = useState(false);
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -118,19 +119,26 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
 
   const handleCameraOption = async () => {
     setShowActionSheet(false);
-    setShowPermissionHelper(true);
+    setError(null);
+    await handleAllowCamera();
   };
 
   const handleAllowCamera = async () => {
     setShowPermissionHelper(false);
+    setIsCameraLoading(true);
     setError(null);
+    
+    console.log('🎥 Attempting camera access...');
     
     try {
       // Check if camera is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('❌ Camera API not supported');
         throw new Error('Camera not supported');
       }
 
+      console.log('✅ Camera API supported, requesting stream...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -139,14 +147,16 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
         } 
       });
       
+      console.log('✅ Camera stream obtained:', stream);
       streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setShowCamera(true);
+        console.log('✅ Camera view activated');
       }
     } catch (err: any) {
-      console.error('Camera access error:', err);
+      console.error('❌ Camera access error:', err.name, err.message);
       
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setError(text[language].denied);
@@ -155,6 +165,9 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
       } else {
         setError(text[language].cameraError);
       }
+      setShowActionSheet(true);
+    } finally {
+      setIsCameraLoading(false);
     }
   };
 
@@ -348,8 +361,29 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
           </DialogHeader>
 
           <AnimatePresence mode="wait">
+            {/* Camera Loading State */}
+            {isCameraLoading && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-4 py-8 text-center"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="inline-block"
+                >
+                  <Camera className="w-12 h-12 text-primary" />
+                </motion.div>
+                <p className="text-muted-foreground">
+                  {language === 'en' ? 'Opening camera...' : 'कॅमेरा उघडत आहे...'}
+                </p>
+              </motion.div>
+            )}
+
             {/* Action Sheet */}
-            {showActionSheet && (
+            {showActionSheet && !isCameraLoading && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -427,7 +461,7 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
             )}
 
             {/* Camera View */}
-            {showCamera && (
+            {showCamera && !isCameraLoading && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -455,7 +489,10 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
                   </Button>
                   <Button 
                     variant="outline" 
-                    onClick={() => setShowCamera(false)}
+                    onClick={() => {
+                      setShowCamera(false);
+                      setShowActionSheet(true);
+                    }}
                   >
                     {text[language].cancel}
                   </Button>
@@ -531,33 +568,38 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
             )}
 
             {/* Error State */}
-            {error && (
+            {error && !isCameraLoading && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
+                className="space-y-4"
               >
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
                 
-                <div className="mt-4 flex space-x-3">
+                <div className="flex space-x-3">
                   <Button 
-                    variant="outline" 
+                    variant="default" 
                     className="flex-1"
-                    onClick={handleGalleryOption}
+                    onClick={() => {
+                      setError(null);
+                      handleCameraOption();
+                    }}
                   >
-                    <ImageIcon className="w-4 h-4 mr-2" />
-                    {text[language].gallery}
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    {language === 'en' ? 'Try Camera Again' : 'पुन्हा प्रयत्न करा'}
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="flex-1"
-                    onClick={handleFilesOption}
+                    onClick={() => {
+                      setError(null);
+                      setShowActionSheet(true);
+                    }}
                   >
-                    <FileImage className="w-4 h-4 mr-2" />
-                    {text[language].files}
+                    {text[language].cancel}
                   </Button>
                 </div>
               </motion.div>
