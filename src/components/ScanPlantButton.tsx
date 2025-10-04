@@ -47,7 +47,11 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const nativeCameraInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  
+  // Detect mobile device
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // Bilingual text
   const text = {
@@ -120,7 +124,15 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
   const handleCameraOption = async () => {
     setShowActionSheet(false);
     setError(null);
-    await handleAllowCamera();
+    
+    // On mobile, use native camera input for instant access
+    if (isMobile) {
+      console.log('📱 Mobile detected - using native camera input');
+      nativeCameraInputRef.current?.click();
+    } else {
+      // On desktop, use web camera API
+      await handleAllowCamera();
+    }
   };
 
   const handleAllowCamera = async () => {
@@ -508,19 +520,55 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4"
               >
-                <div className="relative rounded-lg overflow-hidden">
-                  <img 
-                    src={capturedImage} 
-                    alt="Captured plant" 
-                    className="w-full h-64 object-cover"
-                  />
-                  {imageFile && (
-                    <div className="absolute top-2 left-2">
-                      <Badge variant="secondary" className="text-xs">
+                <div className="relative">
+                  {/* Neon Green Glow Preview */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4 }}
+                    className="relative rounded-2xl overflow-hidden border-2 border-green-400 ring-4 ring-green-500/50"
+                  >
+                    {/* Animated pulse glow */}
+                    <motion.div
+                      animate={{ 
+                        boxShadow: [
+                          '0 0 20px rgba(34,197,94,0.6)',
+                          '0 0 30px rgba(34,197,94,0.8)',
+                          '0 0 20px rgba(34,197,94,0.6)'
+                        ]
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute inset-0 pointer-events-none rounded-2xl"
+                      style={{ boxShadow: '0 0 20px rgba(34,197,94,0.6)' }}
+                    />
+                    
+                    <img 
+                      src={capturedImage} 
+                      alt="Captured plant" 
+                      className="w-full h-64 object-cover"
+                    />
+                    
+                    {/* Success Caption Overlay */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3, duration: 0.4 }}
+                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-green-500/90 to-green-600/90 backdrop-blur-sm py-3 px-4 rounded-b-2xl"
+                    >
+                      <div className="flex items-center justify-center space-x-2">
+                        <Check className="w-5 h-5 text-white" />
+                        <p className="text-white font-medium text-center text-sm">
+                          Photo captured successfully! Ready to scan 🌱
+                        </p>
+                      </div>
+                    </motion.div>
+                    
+                    {imageFile && (
+                      <Badge className="absolute top-2 left-2 bg-green-500/90 text-white border-green-400">
                         {text[language].fileName}: {imageFile.name}
                       </Badge>
-                    </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
 
                 {isProcessing ? (
@@ -634,6 +682,25 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic"
+            className="hidden"
+            onChange={(e) => handleFileSelect(e, false)}
+          />
+          
+          {/* Gallery input */}
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFileSelect(e, true)}
+          />
+          
+          {/* Native camera input for instant mobile camera access */}
+          <input
+            ref={nativeCameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
             className="hidden"
             onChange={(e) => handleFileSelect(e, false)}
           />
