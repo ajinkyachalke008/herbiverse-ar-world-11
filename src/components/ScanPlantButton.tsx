@@ -13,10 +13,17 @@ import {
   RefreshCw, 
   Check,
   AlertCircle,
-  Info
+  Info,
+  Save,
+  Share2
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import PlantIdentificationCard from "./PlantIdentificationCard";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ScanPlantButtonProps {
   variant?: "hero" | "default" | "outline";
@@ -30,6 +37,7 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
   className = "" 
 }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -42,6 +50,11 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
   const [language, setLanguage] = useState<'en' | 'mr'>('en');
   const [plantData, setPlantData] = useState<any>(null);
   const [showResults, setShowResults] = useState(false);
+  const [savedScanId, setSavedScanId] = useState<string | null>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareTitle, setShareTitle] = useState('');
+  const [shareDescription, setShareDescription] = useState('');
+  const [shareLocation, setShareLocation] = useState('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -289,6 +302,25 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
     setError(null);
     
     try {
+      // First upload image to storage if user is logged in
+      let imageUrl = capturedImage;
+      
+      if (user && imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('plant-images')
+          .upload(fileName, imageFile);
+        
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('plant-images')
+            .getPublicUrl(fileName);
+          imageUrl = publicUrl;
+        }
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/identify-plant`,
         {
@@ -307,6 +339,35 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
       }
 
       const identifiedPlant = data.data;
+      
+      // Save to database if user is logged in
+      if (user) {
+        const { data: scanData, error: dbError } = await supabase
+          .from('plant_scans')
+          .insert({
+            user_id: user.id,
+            plant_image_url: imageUrl,
+            common_name: identifiedPlant.commonName,
+            scientific_name: identifiedPlant.scientificName,
+            family: identifiedPlant.family,
+            confidence: identifiedPlant.confidence,
+            identification: identifiedPlant.identification,
+            medicinal_uses: identifiedPlant.medicinalUses,
+            active_compounds: identifiedPlant.activeCompounds,
+            preparation: identifiedPlant.preparation,
+            dosage: identifiedPlant.dosage,
+            safety_warnings: identifiedPlant.safetyWarnings,
+            habitat: identifiedPlant.habitat,
+            cultural_significance: identifiedPlant.culturalSignificance,
+            conservation_status: identifiedPlant.conservationStatus,
+          })
+          .select()
+          .single();
+        
+        if (!dbError && scanData) {
+          setSavedScanId(scanData.id);
+        }
+      }
       
       // Show results card
       setPlantData(identifiedPlant);
@@ -330,6 +391,83 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleSaveToFavorites = async () => {
+    if (!savedScanId || !user) return;
+
+    const { error } = await supabase
+      .from('plant_scans')
+      .update({ is_favorite: true })
+      .eq('id', savedScanId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Saved to Favorites!",
+        description: "Added to your favorite plants collection",
+      });
+    }
+  };
+
+  const handleShareToCommunity = () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to share discoveries",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShareTitle(plantData?.commonName || '');
+    setShowShareDialog(true);
+  };
+
+  const submitShareToCommunity = async () => {
+    if (!user || !savedScanId || !capturedImage) return;
+
+    try {
+      const { error } = await supabase
+        .from('community_discoveries')
+        .insert({
+          user_id: user.id,
+          scan_id: savedScanId,
+          title: shareTitle,
+          description: shareDescription,
+          location: shareLocation,
+          image_url: capturedImage,
+          plant_name: plantData?.commonName,
+        });
+
+      if (error) throw error;
+
+      // Make scan public
+      await supabase
+        .from('plant_scans')
+        .update({ is_public: true })
+        .eq('id', savedScanId);
+
+      toast({
+        title: "Shared to Community!",
+        description: "Your discovery is now visible to everyone",
+      });
+
+      setShowShareDialog(false);
+      setShareTitle('');
+      setShareDescription('');
+      setShareLocation('');
+    } catch (err) {
+      toast({
+        title: "Sharing Failed",
+        description: err instanceof Error ? err.message : "Failed to share",
+        variant: "destructive",
+      });
     }
   };
 
@@ -659,12 +797,26 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
+                className="space-y-4"
               >
                 <PlantIdentificationCard
                   plantData={plantData}
                   imageUrl={capturedImage}
                   onClose={handleClose}
                 />
+                
+                {user && savedScanId && (
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveToFavorites} className="flex-1">
+                      <Save className="w-4 h-4 mr-2" />
+                      Save to Favorites
+                    </Button>
+                    <Button onClick={handleShareToCommunity} variant="outline" className="flex-1">
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -706,6 +858,30 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
           />
           
           <canvas ref={canvasRef} className="hidden" />
+        </DialogContent>
+      </Dialog>
+
+      {/* Share to Community Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share to Community</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Title</Label>
+              <Input value={shareTitle} onChange={(e) => setShareTitle(e.target.value)} />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea value={shareDescription} onChange={(e) => setShareDescription(e.target.value)} />
+            </div>
+            <div>
+              <Label>Location</Label>
+              <Input value={shareLocation} onChange={(e) => setShareLocation(e.target.value)} placeholder="City, State" />
+            </div>
+            <Button onClick={submitShareToCommunity} className="w-full">Share Discovery</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

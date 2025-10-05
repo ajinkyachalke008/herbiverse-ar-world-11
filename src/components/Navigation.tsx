@@ -1,18 +1,30 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Leaf, Menu, X } from "lucide-react";
+import { Leaf, Menu, X, User, Camera, Heart, LogOut } from "lucide-react";
 import { useState } from "react";
-import LoginButton from "./LoginButton";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const navItems = [
-    { name: "Scan Plant", href: "#scan" },
+    { name: "Scan Plant", href: "/" },
     { name: "Herb Database", href: "/herbal-database" },
-    { name: "3D Garden", href: "#garden" },
-    { name: "Community", href: "#community" },
-    { name: "About", href: "#about" },
+    { name: "Earth Scan", href: "/earth-scan" },
+    { name: "Community", href: "/community" },
+    { name: "Herbal Quest", href: "/herbal-quest" },
   ];
 
   return (
@@ -60,14 +72,61 @@ const Navigation = () => {
             ))}
           </div>
 
-          {/* Login Button */}
+          {/* User Menu / Login Button */}
           <motion.div 
             className="hidden md:block"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.8 }}
           >
-            <LoginButton />
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback>
+                        {(profile?.username || profile?.full_name || 'U')[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">
+                        {profile?.full_name || profile?.username || 'User'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        @{profile?.username || 'anonymous'}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/my-scans')}>
+                    <Camera className="mr-2 h-4 w-4" />
+                    My Scans
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/community')}>
+                    <Heart className="mr-2 h-4 w-4" />
+                    Community
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button onClick={() => navigate('/auth')} className="bg-gradient-glow">
+                Sign In
+              </Button>
+            )}
           </motion.div>
 
           {/* Mobile Menu Button */}
@@ -111,7 +170,47 @@ const Navigation = () => {
               animate={{ opacity: isOpen ? 1 : 0, x: isOpen ? 0 : -20 }}
               transition={{ duration: 0.3, delay: navItems.length * 0.1 }}
             >
-              <LoginButton />
+              {user ? (
+                <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      navigate('/profile');
+                      setIsOpen(false);
+                    }}
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      navigate('/my-scans');
+                      setIsOpen(false);
+                    }}
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    My Scans
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-destructive hover:text-destructive"
+                    onClick={() => {
+                      signOut();
+                      setIsOpen(false);
+                    }}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-glow">
+                  Sign In
+                </Button>
+              )}
             </motion.div>
           </div>
         </motion.div>
