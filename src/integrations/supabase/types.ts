@@ -14,7 +14,295 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      community_discoveries: {
+        Row: {
+          comments_count: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string
+          likes_count: number | null
+          location: string | null
+          plant_name: string | null
+          scan_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          comments_count?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url: string
+          likes_count?: number | null
+          location?: string | null
+          plant_name?: string | null
+          scan_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          comments_count?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string
+          likes_count?: number | null
+          location?: string | null
+          plant_name?: string | null
+          scan_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_discoveries_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "plant_scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_discoveries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discovery_comments: {
+        Row: {
+          comment: string
+          created_at: string | null
+          discovery_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string | null
+          discovery_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string | null
+          discovery_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovery_comments_discovery_id_fkey"
+            columns: ["discovery_id"]
+            isOneToOne: false
+            referencedRelation: "community_discoveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discovery_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discovery_likes: {
+        Row: {
+          created_at: string | null
+          discovery_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          discovery_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          discovery_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovery_likes_discovery_id_fkey"
+            columns: ["discovery_id"]
+            isOneToOne: false
+            referencedRelation: "community_discoveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discovery_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plant_scans: {
+        Row: {
+          active_compounds: Json | null
+          common_name: string | null
+          confidence: string | null
+          conservation_status: string | null
+          created_at: string | null
+          cultural_significance: string | null
+          dosage: string | null
+          family: string | null
+          habitat: string | null
+          id: string
+          identification: string | null
+          is_favorite: boolean | null
+          is_public: boolean | null
+          medicinal_uses: Json | null
+          plant_image_url: string
+          preparation: Json | null
+          safety_warnings: Json | null
+          scan_location: string | null
+          scientific_name: string | null
+          user_id: string
+        }
+        Insert: {
+          active_compounds?: Json | null
+          common_name?: string | null
+          confidence?: string | null
+          conservation_status?: string | null
+          created_at?: string | null
+          cultural_significance?: string | null
+          dosage?: string | null
+          family?: string | null
+          habitat?: string | null
+          id?: string
+          identification?: string | null
+          is_favorite?: boolean | null
+          is_public?: boolean | null
+          medicinal_uses?: Json | null
+          plant_image_url: string
+          preparation?: Json | null
+          safety_warnings?: Json | null
+          scan_location?: string | null
+          scientific_name?: string | null
+          user_id: string
+        }
+        Update: {
+          active_compounds?: Json | null
+          common_name?: string | null
+          confidence?: string | null
+          conservation_status?: string | null
+          created_at?: string | null
+          cultural_significance?: string | null
+          dosage?: string | null
+          family?: string | null
+          habitat?: string | null
+          id?: string
+          identification?: string | null
+          is_favorite?: boolean | null
+          is_public?: boolean | null
+          medicinal_uses?: Json | null
+          plant_image_url?: string
+          preparation?: Json | null
+          safety_warnings?: Json | null
+          scan_location?: string | null
+          scientific_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plant_scans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          favorite_herb: string | null
+          full_name: string | null
+          id: string
+          joined_date: string | null
+          location: string | null
+          total_discoveries: number | null
+          total_scans: number | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          favorite_herb?: string | null
+          full_name?: string | null
+          id: string
+          joined_date?: string | null
+          location?: string | null
+          total_discoveries?: number | null
+          total_scans?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          favorite_herb?: string | null
+          full_name?: string | null
+          id?: string
+          joined_date?: string | null
+          location?: string | null
+          total_discoveries?: number | null
+          total_scans?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      user_favorites: {
+        Row: {
+          added_at: string | null
+          herb_id: string
+          herb_name: string | null
+          herb_scientific_name: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          herb_id: string
+          herb_name?: string | null
+          herb_scientific_name?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string | null
+          herb_id?: string
+          herb_name?: string | null
+          herb_scientific_name?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
