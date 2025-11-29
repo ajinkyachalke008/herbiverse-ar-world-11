@@ -321,21 +321,17 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
         }
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/identify-plant`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ image: capturedImage }),
-        }
-      );
+      // Call edge function with authentication
+      const { data, error: functionError } = await supabase.functions.invoke('identify-plant', {
+        body: { image: capturedImage }
+      });
 
-      const data = await response.json();
-      
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to identify plant');
+      if (functionError) {
+        throw new Error(functionError.message || 'Failed to identify plant');
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Failed to identify plant');
       }
 
       const identifiedPlant = data.data;
