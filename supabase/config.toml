@@ -1,7 +1,4 @@
 project_id = "owjujddktlfbhawgffnn"
 
-[functions.identify-plant]
-verify_jwt = false
-
 [functions.translate-plant-info]
 verify_jwt = false
