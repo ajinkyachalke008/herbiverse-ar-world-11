@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Leaf, Menu, X, User, Camera, Heart, LogOut, Stethoscope } from "lucide-react";
+import { Leaf, Menu, X, User, Camera, Heart, LogOut, Stethoscope, Shield } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -114,6 +114,10 @@ const Navigation = () => {
                   <DropdownMenuItem onClick={() => navigate('/community')}>
                     <Heart className="mr-2 h-4 w-4" />
                     Community
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/health-profile')}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Health Profile
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut}>
