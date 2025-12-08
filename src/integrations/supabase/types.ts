@@ -295,6 +295,72 @@ export type Database = {
         }
         Relationships: []
       }
+      user_allergies: {
+        Row: {
+          allergy_name: string
+          allergy_type: Database["public"]["Enums"]["allergy_type"]
+          created_at: string | null
+          diagnosed_by_doctor: boolean | null
+          id: string
+          reaction_description: string | null
+          severity: Database["public"]["Enums"]["allergy_severity"] | null
+          user_id: string
+        }
+        Insert: {
+          allergy_name: string
+          allergy_type: Database["public"]["Enums"]["allergy_type"]
+          created_at?: string | null
+          diagnosed_by_doctor?: boolean | null
+          id?: string
+          reaction_description?: string | null
+          severity?: Database["public"]["Enums"]["allergy_severity"] | null
+          user_id: string
+        }
+        Update: {
+          allergy_name?: string
+          allergy_type?: Database["public"]["Enums"]["allergy_type"]
+          created_at?: string | null
+          diagnosed_by_doctor?: boolean | null
+          id?: string
+          reaction_description?: string | null
+          severity?: Database["public"]["Enums"]["allergy_severity"] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_chronic_conditions: {
+        Row: {
+          condition_name: string
+          created_at: string | null
+          diagnosis_date: string | null
+          id: string
+          is_managed: boolean | null
+          notes: string | null
+          severity: string | null
+          user_id: string
+        }
+        Insert: {
+          condition_name: string
+          created_at?: string | null
+          diagnosis_date?: string | null
+          id?: string
+          is_managed?: boolean | null
+          notes?: string | null
+          severity?: string | null
+          user_id: string
+        }
+        Update: {
+          condition_name?: string
+          created_at?: string | null
+          diagnosis_date?: string | null
+          id?: string
+          is_managed?: boolean | null
+          notes?: string | null
+          severity?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_favorites: {
         Row: {
           added_at: string | null
@@ -330,6 +396,114 @@ export type Database = {
           },
         ]
       }
+      user_health_profiles: {
+        Row: {
+          activity_level: Database["public"]["Enums"]["activity_level"] | null
+          alcohol_consumption: string | null
+          biological_sex: Database["public"]["Enums"]["biological_sex"] | null
+          created_at: string | null
+          date_of_birth: string | null
+          dietary_preference: string[] | null
+          family_history: string[] | null
+          health_goals: string[] | null
+          height_cm: number | null
+          id: string
+          is_breastfeeding: boolean | null
+          is_pregnant: boolean | null
+          sleep_hours_avg: number | null
+          smoking_status: string | null
+          updated_at: string | null
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          activity_level?: Database["public"]["Enums"]["activity_level"] | null
+          alcohol_consumption?: string | null
+          biological_sex?: Database["public"]["Enums"]["biological_sex"] | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          dietary_preference?: string[] | null
+          family_history?: string[] | null
+          health_goals?: string[] | null
+          height_cm?: number | null
+          id?: string
+          is_breastfeeding?: boolean | null
+          is_pregnant?: boolean | null
+          sleep_hours_avg?: number | null
+          smoking_status?: string | null
+          updated_at?: string | null
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          activity_level?: Database["public"]["Enums"]["activity_level"] | null
+          alcohol_consumption?: string | null
+          biological_sex?: Database["public"]["Enums"]["biological_sex"] | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          dietary_preference?: string[] | null
+          family_history?: string[] | null
+          health_goals?: string[] | null
+          height_cm?: number | null
+          id?: string
+          is_breastfeeding?: boolean | null
+          is_pregnant?: boolean | null
+          sleep_hours_avg?: number | null
+          smoking_status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      user_medications: {
+        Row: {
+          created_at: string | null
+          dosage: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          is_active: boolean | null
+          medication_name: string
+          medication_type: string | null
+          notes: string | null
+          prescribing_physician: string | null
+          purpose: string | null
+          start_date: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dosage?: string | null
+          end_date?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          medication_name: string
+          medication_type?: string | null
+          notes?: string | null
+          prescribing_physician?: string | null
+          purpose?: string | null
+          start_date?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dosage?: string | null
+          end_date?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          medication_name?: string
+          medication_type?: string | null
+          notes?: string | null
+          prescribing_physician?: string | null
+          purpose?: string | null
+          start_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -338,7 +512,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      activity_level:
+        | "sedentary"
+        | "lightly_active"
+        | "moderately_active"
+        | "very_active"
+        | "extremely_active"
+      allergy_severity: "mild" | "moderate" | "severe" | "life_threatening"
+      allergy_type: "food" | "environmental" | "medication" | "other"
+      biological_sex: "male" | "female" | "other" | "prefer_not_to_say"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -465,6 +647,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      activity_level: [
+        "sedentary",
+        "lightly_active",
+        "moderately_active",
+        "very_active",
+        "extremely_active",
+      ],
+      allergy_severity: ["mild", "moderate", "severe", "life_threatening"],
+      allergy_type: ["food", "environmental", "medication", "other"],
+      biological_sex: ["male", "female", "other", "prefer_not_to_say"],
+    },
   },
 } as const
