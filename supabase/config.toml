@@ -2,3 +2,6 @@ project_id = "owjujddktlfbhawgffnn"
 
 [functions.translate-plant-info]
 verify_jwt = false
+
+[functions.symptom-checker]
+verify_jwt = false

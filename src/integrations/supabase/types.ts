@@ -268,6 +268,33 @@ export type Database = {
         }
         Relationships: []
       }
+      symptom_queries: {
+        Row: {
+          created_at: string
+          id: string
+          parsed_symptoms: Json | null
+          raw_query: string
+          recommendations: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parsed_symptoms?: Json | null
+          raw_query: string
+          recommendations?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parsed_symptoms?: Json | null
+          raw_query?: string
+          recommendations?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_favorites: {
         Row: {
           added_at: string | null
