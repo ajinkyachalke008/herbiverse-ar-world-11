@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Leaf, Menu, X, User, Camera, Heart, LogOut } from "lucide-react";
+import { Leaf, Menu, X, User, Camera, Heart, LogOut, Stethoscope } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,10 +21,10 @@ const Navigation = () => {
 
   const navItems = [
     { name: "Scan Plant", href: "/" },
+    { name: "Symptom Checker", href: "/symptom-checker" },
     { name: "Herb Database", href: "/herbal-database" },
     { name: "Earth Scan", href: "/earth-scan" },
     { name: "Community", href: "/community" },
-    { name: "Herbal Quest", href: "/herbal-quest" },
   ];
 
   return (

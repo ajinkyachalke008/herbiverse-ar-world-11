@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import HerbalDatabase from "./pages/HerbalDatabase";
 import HerbalQuest from "./pages/HerbalQuest";
 import EarthScan from "./pages/EarthScan";
+import SymptomChecker from "./pages/SymptomChecker";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import MyScans from "./pages/MyScans";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/herbal-database" element={<HerbalDatabase />} />
             <Route path="/herbal-quest" element={<HerbalQuest />} />
             <Route path="/earth-scan" element={<EarthScan />} />
+            <Route path="/symptom-checker" element={<SymptomChecker />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/my-scans" element={<MyScans />} />
