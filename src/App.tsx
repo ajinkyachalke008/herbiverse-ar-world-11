@@ -10,11 +10,13 @@ import HerbalQuest from "./pages/HerbalQuest";
 import EarthScan from "./pages/EarthScan";
 import SymptomChecker from "./pages/SymptomChecker";
 import HealthProfile from "./pages/HealthProfile";
+import VoiceAssistant from "./pages/VoiceAssistant";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import MyScans from "./pages/MyScans";
 import Community from "./pages/Community";
 import NotFound from "./pages/NotFound";
+import HerbalChatBubble from "./components/HerbalChatBubble";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +34,7 @@ const App = () => (
             <Route path="/earth-scan" element={<EarthScan />} />
             <Route path="/symptom-checker" element={<SymptomChecker />} />
             <Route path="/health-profile" element={<HealthProfile />} />
+            <Route path="/voice-assistant" element={<VoiceAssistant />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/my-scans" element={<MyScans />} />
@@ -39,6 +42,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <HerbalChatBubble />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
