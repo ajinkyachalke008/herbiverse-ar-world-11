@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Leaf, 
@@ -13,10 +14,13 @@ import {
   Users, 
   TrendingUp,
   Shield,
-  Droplets
+  Droplets,
+  Volume2,
+  VolumeX
 } from "lucide-react";
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useTranslation, type Language } from '@/hooks/useTranslation';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 
 interface PlantData {
   commonName: string;
@@ -48,6 +52,7 @@ const PlantIdentificationCard: React.FC<PlantIdentificationCardProps> = ({
   const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
   const [displayData, setDisplayData] = useState(plantData);
   const { translatePlantData, isTranslating } = useTranslation();
+  const { speak, stop, isSpeaking, isSupported: ttsSupported } = useTextToSpeech({ rate: 0.9 });
 
   useEffect(() => {
     const translate = async () => {
@@ -56,6 +61,29 @@ const PlantIdentificationCard: React.FC<PlantIdentificationCardProps> = ({
     };
     translate();
   }, [currentLanguage, plantData, translatePlantData]);
+
+  // Generate speech text from plant data
+  const generateSpeechText = () => {
+    const parts = [
+      `${displayData.commonName}, scientifically known as ${displayData.scientificName}.`,
+      displayData.identification,
+      displayData.medicinalUses.length > 0 
+        ? `Medicinal uses include: ${displayData.medicinalUses.slice(0, 3).join(', ')}.`
+        : '',
+      displayData.safetyWarnings.length > 0
+        ? `Important safety warning: ${displayData.safetyWarnings[0]}`
+        : '',
+    ];
+    return parts.filter(Boolean).join(' ');
+  };
+
+  const handleReadAloud = () => {
+    if (isSpeaking) {
+      stop();
+    } else {
+      speak(generateSpeechText());
+    }
+  };
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
@@ -133,8 +161,28 @@ const PlantIdentificationCard: React.FC<PlantIdentificationCardProps> = ({
           </Badge>
         </div>
 
-        {/* Language Switcher */}
-        <div className="flex justify-end">
+        {/* Language Switcher & Audio */}
+        <div className="flex justify-between items-center">
+          {ttsSupported && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReadAloud}
+              className={`flex items-center gap-2 ${isSpeaking ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              {isSpeaking ? (
+                <>
+                  <VolumeX className="h-4 w-4" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Volume2 className="h-4 w-4" />
+                  Read Aloud
+                </>
+              )}
+            </Button>
+          )}
           <LanguageSwitcher
             currentLanguage={currentLanguage}
             onLanguageChange={setCurrentLanguage}
