@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Mic, MicOff, Send, Volume2, VolumeX, Loader2, Bot, User, Radio } from 'lucide-react';
+import { MessageCircle, X, Mic, MicOff, Send, Volume2, VolumeX, Loader2, Bot, User, Radio, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { useWakeWordDetection } from '@/hooks/useWakeWordDetection';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import WaveformAnimation from './WaveformAnimation';
 
 interface Message {
   id: string;
@@ -42,8 +44,24 @@ const HerbalChatBubble: React.FC = () => {
     }
   });
 
+  // Push notifications
+  const { 
+    isSupported: notificationsSupported, 
+    permission: notificationPermission,
+    requestPermission: requestNotificationPermission,
+    sendNotification 
+  } = usePushNotifications();
+
   // Wake word detection callback
   const handleWakeWordDetected = useCallback(() => {
+    // Send push notification
+    if (notificationPermission === 'granted') {
+      sendNotification('🌿 Herbiverse Activated!', {
+        body: 'I heard "Hey Herbiverse" - ready to help with herbal guidance!',
+        tag: 'wake-word',
+      });
+    }
+    
     toast.success('👋 Hey! I heard you!', { 
       description: 'Opening Herbiverse AI assistant...',
       duration: 2000 
@@ -55,7 +73,7 @@ const HerbalChatBubble: React.FC = () => {
         startListening();
       }
     }, 500);
-  }, [sttSupported, startListening]);
+  }, [sttSupported, startListening, notificationPermission, sendNotification]);
 
   const { 
     isDetecting: isWakeWordDetecting, 
@@ -69,12 +87,20 @@ const HerbalChatBubble: React.FC = () => {
   });
 
   // Toggle wake word detection
-  const toggleWakeWord = useCallback(() => {
+  const toggleWakeWord = useCallback(async () => {
     if (wakeWordEnabled) {
       stopWakeWordDetection();
       setWakeWordEnabled(false);
       toast.info('Wake word detection disabled');
     } else {
+      // Request notification permission when enabling wake word
+      if (notificationsSupported && notificationPermission !== 'granted') {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          toast.success('Notifications enabled for wake word alerts');
+        }
+      }
+      
       startWakeWordDetection();
       setWakeWordEnabled(true);
       toast.success('Say "Hey Herbiverse" to activate!', {
@@ -82,7 +108,7 @@ const HerbalChatBubble: React.FC = () => {
         duration: 3000
       });
     }
-  }, [wakeWordEnabled, startWakeWordDetection, stopWakeWordDetection]);
+  }, [wakeWordEnabled, startWakeWordDetection, stopWakeWordDetection, notificationsSupported, notificationPermission, requestNotificationPermission]);
 
   // Stop wake word detection when chat opens, restart when closed
   useEffect(() => {
@@ -198,25 +224,52 @@ const HerbalChatBubble: React.FC = () => {
             exit={{ scale: 0, opacity: 0 }}
             className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2"
           >
-            {/* Wake word toggle button */}
+            {/* Wake word toggle button with waveform */}
             {wakeWordSupported && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
+                className="flex items-center gap-2"
               >
+                {/* Waveform visualization when detecting */}
+                <AnimatePresence>
+                  {wakeWordEnabled && isWakeWordDetecting && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="bg-card/90 backdrop-blur-sm border border-primary/30 rounded-full px-4 py-2 shadow-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <WaveformAnimation isActive={true} barCount={5} color="bg-primary" />
+                        <span className="text-xs text-primary font-medium">Listening...</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
                 <Button
                   onClick={toggleWakeWord}
                   variant="outline"
                   size="sm"
                   className={`rounded-full shadow-md transition-all ${
                     wakeWordEnabled 
-                      ? 'bg-primary/10 border-primary text-primary animate-pulse' 
+                      ? 'bg-primary/10 border-primary text-primary' 
                       : 'bg-card border-border text-muted-foreground'
                   }`}
                 >
                   <Radio className={`h-4 w-4 mr-2 ${wakeWordEnabled ? 'text-primary' : ''}`} />
-                  {wakeWordEnabled ? 'Listening for "Hey Herbiverse"' : 'Enable Wake Word'}
+                  {wakeWordEnabled ? '"Hey Herbiverse"' : 'Enable Wake Word'}
+                  {notificationsSupported && (
+                    <span className="ml-2">
+                      {notificationPermission === 'granted' ? (
+                        <Bell className="h-3 w-3 text-primary" />
+                      ) : (
+                        <BellOff className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </span>
+                  )}
                 </Button>
               </motion.div>
             )}
@@ -225,17 +278,27 @@ const HerbalChatBubble: React.FC = () => {
             <div className="relative">
               {wakeWordEnabled && isWakeWordDetecting && (
                 <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-card"
+                  animate={{ 
+                    scale: [1, 1.3, 1],
+                    opacity: [0.5, 1, 0.5]
+                  }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  className="absolute -inset-2 rounded-full bg-primary/20"
                 />
               )}
               <Button
                 onClick={() => setIsOpen(true)}
-                className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
+                className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all relative z-10"
               >
                 <MessageCircle className="h-6 w-6" />
               </Button>
+              {wakeWordEnabled && isWakeWordDetecting && (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-card z-20"
+                />
+              )}
             </div>
           </motion.div>
         )}
