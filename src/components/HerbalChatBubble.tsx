@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
-import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import { useElevenLabsTTS } from '@/hooks/useElevenLabsTTS';
 import { useWakeWordDetection } from '@/hooks/useWakeWordDetection';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,7 +30,13 @@ const HerbalChatBubble: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  const { speak, stop, isSpeaking, isSupported: ttsSupported } = useTextToSpeech({ rate: 0.9 });
+  // ElevenLabs TTS for natural voice
+  const { speak, stop, isSpeaking, isLoading: ttsLoading } = useElevenLabsTTS({
+    onError: (error) => {
+      console.error('TTS error:', error);
+      toast.error('Voice playback failed');
+    }
+  });
   
   const { 
     isListening, 
@@ -173,8 +179,8 @@ const HerbalChatBubble: React.FC = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Auto-speak response if enabled
-      if (autoSpeak && ttsSupported) {
+      // Auto-speak response if enabled (using ElevenLabs)
+      if (autoSpeak) {
         speak(assistantMessage.content);
       }
     } catch (error) {
@@ -326,16 +332,21 @@ const HerbalChatBubble: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {ttsSupported && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setAutoSpeak(!autoSpeak)}
-                    className={autoSpeak ? 'text-primary' : 'text-muted-foreground'}
-                  >
-                    {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setAutoSpeak(!autoSpeak)}
+                  className={autoSpeak ? 'text-primary' : 'text-muted-foreground'}
+                  title={autoSpeak ? 'Auto-speak enabled (ElevenLabs)' : 'Enable auto-speak'}
+                >
+                  {ttsLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : autoSpeak ? (
+                    <Volume2 className="h-4 w-4" />
+                  ) : (
+                    <VolumeX className="h-4 w-4" />
+                  )}
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -395,13 +406,18 @@ const HerbalChatBubble: React.FC = () => {
                       }`}>
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       </div>
-                      {message.role === 'assistant' && ttsSupported && (
+                      {message.role === 'assistant' && (
                         <button
                           onClick={() => speakMessage(message.content)}
-                          className="mt-1 text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                          disabled={ttsLoading}
+                          className="mt-1 text-xs text-muted-foreground hover:text-primary flex items-center gap-1 disabled:opacity-50"
                         >
-                          <Volume2 className="h-3 w-3" />
-                          {isSpeaking ? 'Stop' : 'Read aloud'}
+                          {ttsLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Volume2 className="h-3 w-3" />
+                          )}
+                          {isSpeaking ? 'Stop' : ttsLoading ? 'Loading...' : 'Read aloud'}
                         </button>
                       )}
                     </div>
