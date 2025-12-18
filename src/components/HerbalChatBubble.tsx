@@ -168,21 +168,22 @@ const HerbalChatBubble: React.FC = () => {
     }
   }, [partialTranscript, isListening, wakeWordTriggered]);
 
-  // Auto-send message when triggered by wake word
+  // Auto-send message when triggered by wake word (with auto-speak)
   useEffect(() => {
     if (pendingAutoSendRef.current && !isLoading) {
       const textToSend = pendingAutoSendRef.current;
       pendingAutoSendRef.current = null;
       // Trigger send after a brief delay to ensure inputText is set
+      // Force speak = true for wake word triggered messages
       setTimeout(() => {
         if (textToSend) {
-          sendMessageWithText(textToSend);
+          sendMessageWithText(textToSend, true);
         }
       }, 100);
     }
   }, [inputText]);
 
-  const sendMessageWithText = async (text: string) => {
+  const sendMessageWithText = async (text: string, forceSpeak: boolean = false) => {
     if (!text.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -222,8 +223,8 @@ const HerbalChatBubble: React.FC = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Auto-speak response if enabled (using ElevenLabs)
-      if (autoSpeak) {
+      // Auto-speak response if enabled OR if triggered by wake word (forceSpeak)
+      if (autoSpeak || forceSpeak) {
         speak(assistantMessage.content);
       }
     } catch (error) {
