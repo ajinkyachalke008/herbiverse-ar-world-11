@@ -18,21 +18,19 @@ serve(async (req) => {
       throw new Error("Image is required");
     }
 
-    const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!openRouterApiKey) {
-      throw new Error("OpenRouter API key not configured");
+    if (!lovableApiKey) {
+      throw new Error("Lovable API key not configured");
     }
 
-    console.log("Processing plant identification request...");
+    console.log("Processing plant identification request with Lovable AI...");
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openRouterApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://herbiverse-ar-world.lovable.app',
-        'X-Title': 'Herbiverse Plant Identifier',
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
@@ -71,19 +69,23 @@ If you cannot confidently identify the plant, set confidence to "low" and explai
             ]
           }
         ],
-        temperature: 0.3,
-        max_tokens: 2000
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenRouter API error:', response.status, errorText);
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      console.error('Lovable AI error:', response.status, errorText);
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded, please try again later.');
+      }
+      if (response.status === 402) {
+        throw new Error('Credits required, please add credits to your workspace.');
+      }
+      throw new Error(`Lovable AI error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log("Received response from OpenRouter");
+    console.log("Received response from Lovable AI (Gemini 2.5 Flash)");
     
     const content = data.choices[0].message.content;
     
