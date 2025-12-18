@@ -27,9 +27,13 @@ const HerbalChatBubble: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
+  const [wakeWordTriggered, setWakeWordTriggered] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
+  // Ref to track pending auto-send text from wake word
+  const pendingAutoSendRef = useRef<string | null>(null);
+  
   // ElevenLabs TTS for natural voice
   const { speak, stop, isSpeaking, isLoading: ttsLoading } = useElevenLabsTTS({
     onError: (error) => {
@@ -48,11 +52,20 @@ const HerbalChatBubble: React.FC = () => {
     error: sttError
   } = useElevenLabsSTT({
     onResult: (text) => {
-      setInputText(prev => prev + (prev ? ' ' : '') + text);
+      // If triggered by wake word, auto-send the message
+      if (wakeWordTriggered && text.trim()) {
+        pendingAutoSendRef.current = text.trim();
+        setInputText(text.trim());
+        setWakeWordTriggered(false);
+        stopListening();
+      } else {
+        setInputText(prev => prev + (prev ? ' ' : '') + text);
+      }
     },
     onError: (error) => {
       console.error('STT error:', error);
       toast.error('Voice recognition failed');
+      setWakeWordTriggered(false);
     }
   });
   
@@ -77,10 +90,11 @@ const HerbalChatBubble: React.FC = () => {
     }
     
     toast.success('👋 Hey! I heard you!', { 
-      description: 'Opening Herbiverse AI assistant...',
+      description: 'Speak your question now...',
       duration: 2000 
     });
     setIsOpen(true);
+    setWakeWordTriggered(true);
     // Start listening for the actual query after a brief delay
     setTimeout(() => {
       if (sttSupported) {
@@ -140,24 +154,41 @@ const HerbalChatBubble: React.FC = () => {
     }
   }, [messages]);
 
-  // Update input with live partial transcript
+  // Update input with live partial transcript (only when not triggered by wake word)
   useEffect(() => {
-    if (isListening && partialTranscript) {
+    if (isListening && partialTranscript && !wakeWordTriggered) {
       // Show partial transcript as placeholder effect
       setInputText(prev => {
         const baseText = prev.replace(/\s*\[.*\]$/, ''); // Remove any previous partial
         return baseText + (baseText ? ' ' : '') + `[${partialTranscript}]`;
       });
+    } else if (isListening && partialTranscript && wakeWordTriggered) {
+      // Show live transcript for wake word queries
+      setInputText(`[${partialTranscript}]`);
     }
-  }, [partialTranscript, isListening]);
+  }, [partialTranscript, isListening, wakeWordTriggered]);
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+  // Auto-send message when triggered by wake word
+  useEffect(() => {
+    if (pendingAutoSendRef.current && !isLoading) {
+      const textToSend = pendingAutoSendRef.current;
+      pendingAutoSendRef.current = null;
+      // Trigger send after a brief delay to ensure inputText is set
+      setTimeout(() => {
+        if (textToSend) {
+          sendMessageWithText(textToSend);
+        }
+      }, 100);
+    }
+  }, [inputText]);
+
+  const sendMessageWithText = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputText.trim(),
+      content: text.trim(),
       timestamp: new Date(),
     };
 
@@ -206,6 +237,10 @@ const HerbalChatBubble: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sendMessage = () => {
+    sendMessageWithText(inputText);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
