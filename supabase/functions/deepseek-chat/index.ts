@@ -11,9 +11,9 @@ serve(async (req) => {
   }
 
   try {
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
-    if (!OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY is not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const { messages, stream = false, context } = await req.json();
@@ -52,31 +52,39 @@ Guidelines:
       ...messages
     ];
 
-    console.log('Calling OpenRouter API (Claude 3.5 Sonnet) with', messages.length, 'messages');
+    console.log('Calling Lovable AI (Gemini 2.5 Flash) with', messages.length, 'messages');
 
     if (stream) {
       // Streaming response
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://herbiverse.lovable.app',
-          'X-Title': 'Herbiverse AI Assistant',
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3.5-sonnet',
+          model: 'google/gemini-2.5-flash',
           messages: apiMessages,
           stream: true,
-          max_tokens: 1024,
-          temperature: 0.7,
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OpenRouter API error:', response.status, errorText);
-        throw new Error(`OpenRouter API error: ${response.status}`);
+        console.error('Lovable AI error:', response.status, errorText);
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: 'Credits required, please add credits to your workspace.' }), {
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        throw new Error(`Lovable AI error: ${response.status}`);
       }
 
       return new Response(response.body, {
@@ -88,32 +96,40 @@ Guidelines:
       });
     } else {
       // Non-streaming response
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://herbiverse.lovable.app',
-          'X-Title': 'Herbiverse AI Assistant',
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3.5-sonnet',
+          model: 'google/gemini-2.5-flash',
           messages: apiMessages,
-          max_tokens: 1024,
-          temperature: 0.7,
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OpenRouter API error:', response.status, errorText);
-        throw new Error(`OpenRouter API error: ${response.status}`);
+        console.error('Lovable AI error:', response.status, errorText);
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: 'Credits required, please add credits to your workspace.' }), {
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        throw new Error(`Lovable AI error: ${response.status}`);
       }
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
 
-      console.log('Claude 3.5 Sonnet response received, length:', content.length);
+      console.log('Gemini 2.5 Flash response received, length:', content.length);
 
       return new Response(JSON.stringify({ content }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
