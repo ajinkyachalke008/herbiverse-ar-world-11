@@ -4,7 +4,7 @@ import { MessageCircle, X, Mic, MicOff, Send, Volume2, VolumeX, Loader2, Bot, Us
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
+import { useElevenLabsSTT } from '@/hooks/useElevenLabsSTT';
 import { useElevenLabsTTS } from '@/hooks/useElevenLabsTTS';
 import { useWakeWordDetection } from '@/hooks/useWakeWordDetection';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -38,17 +38,25 @@ const HerbalChatBubble: React.FC = () => {
     }
   });
   
+  // ElevenLabs STT for accurate voice transcription
   const { 
     isListening, 
     transcript, 
+    partialTranscript,
     startListening, 
     stopListening, 
-    isSupported: sttSupported 
-  } = useVoiceRecognition({
+    error: sttError
+  } = useElevenLabsSTT({
     onResult: (text) => {
-      setInputText(text);
+      setInputText(prev => prev + (prev ? ' ' : '') + text);
+    },
+    onError: (error) => {
+      console.error('STT error:', error);
+      toast.error('Voice recognition failed');
     }
   });
+  
+  const sttSupported = typeof navigator !== 'undefined' && 'mediaDevices' in navigator;
 
   // Push notifications
   const { 
@@ -132,12 +140,16 @@ const HerbalChatBubble: React.FC = () => {
     }
   }, [messages]);
 
-  // Update input with live transcript
+  // Update input with live partial transcript
   useEffect(() => {
-    if (isListening && transcript) {
-      setInputText(transcript);
+    if (isListening && partialTranscript) {
+      // Show partial transcript as placeholder effect
+      setInputText(prev => {
+        const baseText = prev.replace(/\s*\[.*\]$/, ''); // Remove any previous partial
+        return baseText + (baseText ? ' ' : '') + `[${partialTranscript}]`;
+      });
     }
-  }, [transcript, isListening]);
+  }, [partialTranscript, isListening]);
 
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -203,11 +215,14 @@ const HerbalChatBubble: React.FC = () => {
     }
   };
 
-  const toggleVoiceInput = () => {
+  const toggleVoiceInput = async () => {
     if (isListening) {
       stopListening();
+      // Clean up partial transcript markers
+      setInputText(prev => prev.replace(/\s*\[.*\]$/, ''));
     } else {
-      startListening();
+      setInputText('');
+      await startListening();
     }
   };
 
@@ -458,7 +473,7 @@ const HerbalChatBubble: React.FC = () => {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={isListening ? 'Listening...' : 'Ask about herbs, remedies...'}
+                  placeholder={isListening ? 'Listening with ElevenLabs...' : 'Ask about herbs, remedies...'}
                   className="flex-1 bg-muted border-0"
                   disabled={isLoading}
                 />
