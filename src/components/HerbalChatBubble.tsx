@@ -31,8 +31,8 @@ const HerbalChatBubble: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  // Ref to track pending auto-send text from wake word
-  const pendingAutoSendRef = useRef<string | null>(null);
+  // Ref to track if we should auto-send after STT result
+  const shouldAutoSendRef = useRef(false);
   
   // ElevenLabs TTS for natural voice
   const { speak, stop, isSpeaking, isLoading: ttsLoading } = useElevenLabsTTS({
@@ -41,6 +41,63 @@ const HerbalChatBubble: React.FC = () => {
       toast.error('Voice playback failed');
     }
   });
+  
+  // Function to send message (defined early so it can be used in STT callback)
+  const doSendMessage = async (text: string, forceSpeak: boolean = false) => {
+    if (!text.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: text.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+    setIsLoading(true);
+
+    try {
+      const messageHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const { data, error } = await supabase.functions.invoke('deepseek-chat', {
+        body: {
+          messages: [...messageHistory, { role: 'user', content: userMessage.content }],
+          stream: false,
+          context: user ? { healthProfile: null } : undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.content || 'I apologize, but I could not generate a response. Please try again.',
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Auto-speak response if enabled OR if triggered by wake word
+      if (autoSpeak || forceSpeak) {
+        speak(assistantMessage.content);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again later.',
+        timestamp: new Date(),
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // ElevenLabs STT for accurate voice transcription
   const { 
@@ -52,12 +109,13 @@ const HerbalChatBubble: React.FC = () => {
     error: sttError
   } = useElevenLabsSTT({
     onResult: (text) => {
-      // If triggered by wake word, auto-send the message
-      if (wakeWordTriggered && text.trim()) {
-        pendingAutoSendRef.current = text.trim();
-        setInputText(text.trim());
+      // If triggered by wake word, auto-send the message immediately
+      if (shouldAutoSendRef.current && text.trim()) {
+        shouldAutoSendRef.current = false;
         setWakeWordTriggered(false);
         stopListening();
+        // Send with force speak enabled
+        doSendMessage(text.trim(), true);
       } else {
         setInputText(prev => prev + (prev ? ' ' : '') + text);
       }
@@ -66,6 +124,7 @@ const HerbalChatBubble: React.FC = () => {
       console.error('STT error:', error);
       toast.error('Voice recognition failed');
       setWakeWordTriggered(false);
+      shouldAutoSendRef.current = false;
     }
   });
   
@@ -95,6 +154,7 @@ const HerbalChatBubble: React.FC = () => {
     });
     setIsOpen(true);
     setWakeWordTriggered(true);
+    shouldAutoSendRef.current = true; // Enable auto-send for this query
     // Start listening for the actual query after a brief delay
     setTimeout(() => {
       if (sttSupported) {
@@ -168,80 +228,8 @@ const HerbalChatBubble: React.FC = () => {
     }
   }, [partialTranscript, isListening, wakeWordTriggered]);
 
-  // Auto-send message when triggered by wake word (with auto-speak)
-  useEffect(() => {
-    if (pendingAutoSendRef.current && !isLoading) {
-      const textToSend = pendingAutoSendRef.current;
-      pendingAutoSendRef.current = null;
-      // Trigger send after a brief delay to ensure inputText is set
-      // Force speak = true for wake word triggered messages
-      setTimeout(() => {
-        if (textToSend) {
-          sendMessageWithText(textToSend, true);
-        }
-      }, 100);
-    }
-  }, [inputText]);
-
-  const sendMessageWithText = async (text: string, forceSpeak: boolean = false) => {
-    if (!text.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: text.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsLoading(true);
-
-    try {
-      // Build message history for context
-      const messageHistory = messages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const { data, error } = await supabase.functions.invoke('deepseek-chat', {
-        body: {
-          messages: [...messageHistory, { role: 'user', content: userMessage.content }],
-          stream: false,
-          context: user ? { healthProfile: null } : undefined, // Could load user health profile here
-        },
-      });
-
-      if (error) throw error;
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.content || 'I apologize, but I could not generate a response. Please try again.',
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      // Auto-speak response if enabled OR if triggered by wake word (forceSpeak)
-      if (autoSpeak || forceSpeak) {
-        speak(assistantMessage.content);
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again later.',
-        timestamp: new Date(),
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const sendMessage = () => {
-    sendMessageWithText(inputText);
+    doSendMessage(inputText);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -374,12 +362,14 @@ const HerbalChatBubble: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center">
+                <div className={`h-10 w-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center ${isSpeaking ? 'animate-pulse' : ''}`}>
                   <Bot className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Herbiverse AI</h3>
-                  <p className="text-xs text-muted-foreground">Voice-enabled herbal assistant</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isSpeaking ? '🔊 Speaking...' : 'Voice-enabled herbal assistant'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -403,6 +393,38 @@ const HerbalChatBubble: React.FC = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Speaking indicator bar */}
+            <AnimatePresence>
+              {isSpeaking && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="bg-gradient-to-r from-primary/20 to-accent/20 px-4 py-2 flex items-center gap-3 border-b border-primary/20"
+                >
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ height: [8, 16, 8] }}
+                        transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.1 }}
+                        className="w-1 bg-primary rounded-full"
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm text-primary font-medium">AI is speaking...</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={stop}
+                    className="ml-auto text-primary hover:text-primary/80 h-7 px-2"
+                  >
+                    Stop
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Messages */}
             <ScrollArea ref={scrollRef} className="flex-1 p-4">
