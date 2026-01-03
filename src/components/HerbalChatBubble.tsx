@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Mic, MicOff, Send, Volume2, VolumeX, Loader2, Bot, User, Radio, Bell, BellOff } from 'lucide-react';
+import { MessageCircle, X, Mic, MicOff, Send, Volume2, VolumeX, Loader2, Bot, User, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useElevenLabsSTT } from '@/hooks/useElevenLabsSTT';
 import { useElevenLabsTTS } from '@/hooks/useElevenLabsTTS';
-import { useWakeWordDetection } from '@/hooks/useWakeWordDetection';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -26,13 +24,14 @@ const HerbalChatBubble: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(false);
-  const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
-  const [wakeWordTriggered, setWakeWordTriggered] = useState(false);
+  const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  // Ref to track if we should auto-send after STT result
-  const shouldAutoSendRef = useRef(false);
+  // Push-to-talk refs
+  const pttActiveRef = useRef(false);
+  const pttTranscriptRef = useRef('');
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // ElevenLabs TTS for natural voice
   const { speak, stop, isSpeaking, isLoading: ttsLoading } = useElevenLabsTTS({
@@ -42,7 +41,7 @@ const HerbalChatBubble: React.FC = () => {
     }
   });
   
-  // Function to send message (defined early so it can be used in STT callback)
+  // Function to send message
   const doSendMessage = async (text: string, forceSpeak: boolean = false) => {
     if (!text.trim() || isLoading) return;
 
@@ -82,7 +81,7 @@ const HerbalChatBubble: React.FC = () => {
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Auto-speak response if enabled OR if triggered by wake word
+      // Auto-speak response if enabled OR if triggered by push-to-talk
       if (autoSpeak || forceSpeak) {
         speak(assistantMessage.content);
       }
@@ -109,13 +108,9 @@ const HerbalChatBubble: React.FC = () => {
     error: sttError
   } = useElevenLabsSTT({
     onResult: (text) => {
-      // If triggered by wake word, auto-send the message immediately
-      if (shouldAutoSendRef.current && text.trim()) {
-        shouldAutoSendRef.current = false;
-        setWakeWordTriggered(false);
-        stopListening();
-        // Send with force speak enabled
-        doSendMessage(text.trim(), true);
+      if (pttActiveRef.current) {
+        // Accumulate transcript during push-to-talk
+        pttTranscriptRef.current += (pttTranscriptRef.current ? ' ' : '') + text;
       } else {
         setInputText(prev => prev + (prev ? ' ' : '') + text);
       }
@@ -123,97 +118,83 @@ const HerbalChatBubble: React.FC = () => {
     onError: (error) => {
       console.error('STT error:', error);
       toast.error('Voice recognition failed');
-      setWakeWordTriggered(false);
-      shouldAutoSendRef.current = false;
     }
   });
   
   const sttSupported = typeof navigator !== 'undefined' && 'mediaDevices' in navigator;
 
-  // Push notifications
-  const { 
-    isSupported: notificationsSupported, 
-    permission: notificationPermission,
-    requestPermission: requestNotificationPermission,
-    sendNotification 
-  } = usePushNotifications();
-
-  // Wake word detection callback
-  const handleWakeWordDetected = useCallback(() => {
-    // Send push notification
-    if (notificationPermission === 'granted') {
-      sendNotification('🌿 Herbiverse Activated!', {
-        body: 'I heard "Hey Herbiverse" - ready to help with herbal guidance!',
-        tag: 'wake-word',
-      });
+  // Push-to-talk: Start listening when spacebar is pressed (in chat)
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Only activate if chat is open and spacebar pressed, and not in an input field
+    if (!isOpen) return;
+    if (e.code !== 'Space') return;
+    
+    // Don't trigger if focus is on the text input
+    const activeElement = document.activeElement;
+    if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') {
+      return;
     }
     
-    toast.success('👋 Hey! I heard you!', { 
-      description: 'Speak your question now...',
-      duration: 2000 
-    });
-    setIsOpen(true);
-    setWakeWordTriggered(true);
-    shouldAutoSendRef.current = true; // Enable auto-send for this query
-    // Start listening for the actual query after a brief delay
+    // Prevent page scroll
+    e.preventDefault();
+    
+    // Don't restart if already active
+    if (pttActiveRef.current) return;
+    
+    pttActiveRef.current = true;
+    pttTranscriptRef.current = '';
+    setIsPushToTalkActive(true);
+    
+    if (sttSupported) {
+      startListening();
+    }
+  }, [isOpen, sttSupported, startListening]);
+
+  // Push-to-talk: Stop listening and send when spacebar is released
+  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+    if (e.code !== 'Space') return;
+    if (!pttActiveRef.current) return;
+    
+    e.preventDefault();
+    
+    pttActiveRef.current = false;
+    setIsPushToTalkActive(false);
+    
+    if (isListening) {
+      stopListening();
+    }
+    
+    // Small delay to ensure final transcript is captured
     setTimeout(() => {
-      if (sttSupported) {
-        startListening();
+      const finalText = pttTranscriptRef.current.trim();
+      if (finalText) {
+        // Send the message and force speak the response
+        doSendMessage(finalText, true);
       }
-    }, 500);
-  }, [sttSupported, startListening, notificationPermission, sendNotification]);
+      pttTranscriptRef.current = '';
+    }, 300);
+  }, [isListening, stopListening, doSendMessage]);
 
-  const { 
-    isDetecting: isWakeWordDetecting, 
-    startDetection: startWakeWordDetection, 
-    stopDetection: stopWakeWordDetection,
-    isSupported: wakeWordSupported 
-  } = useWakeWordDetection({
-    wakeWord: 'hey herbiverse',
-    onWakeWordDetected: handleWakeWordDetected,
-    enabled: wakeWordEnabled && !isOpen, // Only detect when chat is closed
-  });
-
-  // Toggle wake word detection
-  const toggleWakeWord = useCallback(async () => {
-    if (wakeWordEnabled) {
-      stopWakeWordDetection();
-      setWakeWordEnabled(false);
-      toast.info('Wake word detection disabled');
-    } else {
-      // Request notification permission when enabling wake word
-      if (notificationsSupported && notificationPermission !== 'granted') {
-        const granted = await requestNotificationPermission();
-        if (granted) {
-          toast.success('Notifications enabled for wake word alerts');
-        }
-      }
-      
-      startWakeWordDetection();
-      setWakeWordEnabled(true);
-      toast.success('Say "Hey Herbiverse" to activate!', {
-        description: 'Wake word detection is now active',
-        duration: 3000
-      });
-    }
-  }, [wakeWordEnabled, startWakeWordDetection, stopWakeWordDetection, notificationsSupported, notificationPermission, requestNotificationPermission]);
-
-  // Stop wake word detection when chat opens, restart when closed
+  // Add/remove keyboard listeners
   useEffect(() => {
-    if (isOpen && wakeWordEnabled) {
-      stopWakeWordDetection();
-    } else if (!isOpen && wakeWordEnabled) {
-      startWakeWordDetection();
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
     }
-  }, [isOpen, wakeWordEnabled, startWakeWordDetection, stopWakeWordDetection]);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isOpen, handleKeyDown, handleKeyUp]);
 
-  // Important: ensure the mic isn't held by ElevenLabs STT while the chat is closed,
-  // otherwise wake word listening may fail or stop immediately.
+  // Clean up when chat closes
   useEffect(() => {
     if (!isOpen && isListening) {
       stopListening();
-      setWakeWordTriggered(false);
-      shouldAutoSendRef.current = false;
+      pttActiveRef.current = false;
+      pttTranscriptRef.current = '';
+      setIsPushToTalkActive(false);
     }
   }, [isOpen, isListening, stopListening]);
 
@@ -224,19 +205,15 @@ const HerbalChatBubble: React.FC = () => {
     }
   }, [messages]);
 
-  // Update input with live partial transcript (only when not triggered by wake word)
+  // Update input with live partial transcript (only for non-PTT mode)
   useEffect(() => {
-    if (isListening && partialTranscript && !wakeWordTriggered) {
-      // Show partial transcript as placeholder effect
+    if (isListening && partialTranscript && !isPushToTalkActive) {
       setInputText(prev => {
-        const baseText = prev.replace(/\s*\[.*\]$/, ''); // Remove any previous partial
+        const baseText = prev.replace(/\s*\[.*\]$/, '');
         return baseText + (baseText ? ' ' : '') + `[${partialTranscript}]`;
       });
-    } else if (isListening && partialTranscript && wakeWordTriggered) {
-      // Show live transcript for wake word queries
-      setInputText(`[${partialTranscript}]`);
     }
-  }, [partialTranscript, isListening, wakeWordTriggered]);
+  }, [partialTranscript, isListening, isPushToTalkActive]);
 
   const sendMessage = () => {
     doSendMessage(inputText);
@@ -252,7 +229,6 @@ const HerbalChatBubble: React.FC = () => {
   const toggleVoiceInput = async () => {
     if (isListening) {
       stopListening();
-      // Clean up partial transcript markers
       setInputText(prev => prev.replace(/\s*\[.*\]$/, ''));
     } else {
       setInputText('');
@@ -279,82 +255,25 @@ const HerbalChatBubble: React.FC = () => {
             exit={{ scale: 0, opacity: 0 }}
             className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2"
           >
-            {/* Wake word toggle button with waveform */}
-            {wakeWordSupported && (
+            {/* Push-to-talk hint */}
+            {sttSupported && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
-                className="flex items-center gap-2"
+                className="bg-card/90 backdrop-blur-sm border border-border rounded-full px-3 py-1.5 shadow-md flex items-center gap-2"
               >
-                {/* Waveform visualization when detecting */}
-                <AnimatePresence>
-                  {wakeWordEnabled && isWakeWordDetecting && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="bg-card/90 backdrop-blur-sm border border-primary/30 rounded-full px-4 py-2 shadow-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        <WaveformAnimation isActive={true} barCount={5} color="bg-primary" />
-                        <span className="text-xs text-primary font-medium">Listening...</span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                
-                <Button
-                  onClick={toggleWakeWord}
-                  variant="outline"
-                  size="sm"
-                  className={`rounded-full shadow-md transition-all ${
-                    wakeWordEnabled 
-                      ? 'bg-primary/10 border-primary text-primary' 
-                      : 'bg-card border-border text-muted-foreground'
-                  }`}
-                >
-                  <Radio className={`h-4 w-4 mr-2 ${wakeWordEnabled ? 'text-primary' : ''}`} />
-                  {wakeWordEnabled ? '"Hey Herbiverse"' : 'Enable Wake Word'}
-                  {notificationsSupported && (
-                    <span className="ml-2">
-                      {notificationPermission === 'granted' ? (
-                        <Bell className="h-3 w-3 text-primary" />
-                      ) : (
-                        <BellOff className="h-3 w-3 text-muted-foreground" />
-                      )}
-                    </span>
-                  )}
-                </Button>
+                <Keyboard className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Hold <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">Space</kbd> to talk</span>
               </motion.div>
             )}
             
-            {/* Main chat button with wake word indicator */}
-            <div className="relative">
-              {wakeWordEnabled && isWakeWordDetecting && (
-                <motion.div
-                  animate={{ 
-                    scale: [1, 1.3, 1],
-                    opacity: [0.5, 1, 0.5]
-                  }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                  className="absolute -inset-2 rounded-full bg-primary/20"
-                />
-              )}
-              <Button
-                onClick={() => setIsOpen(true)}
-                className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all relative z-10"
-              >
-                <MessageCircle className="h-6 w-6" />
-              </Button>
-              {wakeWordEnabled && isWakeWordDetecting && (
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-card z-20"
-                />
-              )}
-            </div>
+            <Button
+              onClick={() => setIsOpen(true)}
+              className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
+            >
+              <MessageCircle className="h-6 w-6" />
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -378,7 +297,7 @@ const HerbalChatBubble: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-foreground">Herbiverse AI</h3>
                   <p className="text-xs text-muted-foreground">
-                    {isSpeaking ? '🔊 Speaking...' : 'Voice-enabled herbal assistant'}
+                    {isSpeaking ? '🔊 Speaking...' : isPushToTalkActive ? '🎤 Listening...' : 'Hold Space to talk'}
                   </p>
                 </div>
               </div>
@@ -388,7 +307,7 @@ const HerbalChatBubble: React.FC = () => {
                   size="icon"
                   onClick={() => setAutoSpeak(!autoSpeak)}
                   className={autoSpeak ? 'text-primary' : 'text-muted-foreground'}
-                  title={autoSpeak ? 'Auto-speak enabled (ElevenLabs)' : 'Enable auto-speak'}
+                  title={autoSpeak ? 'Auto-speak enabled' : 'Enable auto-speak'}
                 >
                   {ttsLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -402,10 +321,9 @@ const HerbalChatBubble: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => {
-                    // Release mic + reset wake-word flow when closing.
                     if (isListening) stopListening();
-                    setWakeWordTriggered(false);
-                    shouldAutoSendRef.current = false;
+                    pttActiveRef.current = false;
+                    setIsPushToTalkActive(false);
                     setIsOpen(false);
                   }}
                 >
@@ -414,9 +332,40 @@ const HerbalChatBubble: React.FC = () => {
               </div>
             </div>
 
+            {/* Push-to-talk indicator bar */}
+            <AnimatePresence>
+              {isPushToTalkActive && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="bg-gradient-to-r from-red-500/20 to-orange-500/20 px-4 py-3 flex items-center gap-3 border-b border-red-500/30"
+                >
+                  <div className="relative">
+                    <Mic className="h-5 w-5 text-red-500" />
+                    <motion.div
+                      animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
+                      transition={{ repeat: Infinity, duration: 1 }}
+                      className="absolute inset-0 rounded-full bg-red-500/30"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <WaveformAnimation isActive={true} barCount={8} color="bg-red-500" />
+                      <span className="text-sm text-red-600 font-medium">Push-to-Talk Active</span>
+                    </div>
+                    {partialTranscript && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">"{partialTranscript}"</p>
+                    )}
+                  </div>
+                  <kbd className="px-2 py-1 bg-red-500/20 rounded text-xs font-mono text-red-600">Space</kbd>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Speaking indicator bar */}
             <AnimatePresence>
-              {isSpeaking && (
+              {isSpeaking && !isPushToTalkActive && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
@@ -454,11 +403,16 @@ const HerbalChatBubble: React.FC = () => {
                     <Bot className="h-8 w-8 text-primary" />
                   </div>
                   <h4 className="font-medium text-foreground mb-2">Welcome to Herbiverse AI!</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Ask me about medicinal plants, herbal remedies, or health concerns. 
-                    I can help with personalized recommendations.
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Ask me about medicinal plants, herbal remedies, or health concerns.
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                  <div className="bg-muted/50 rounded-lg px-4 py-2 mb-4">
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Keyboard className="h-3 w-3" />
+                      Hold <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] font-mono">Space</kbd> to speak
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2 justify-center">
                     {['What herbs help with sleep?', 'Tell me about Ashwagandha', 'Natural remedies for headaches'].map((suggestion) => (
                       <button
                         key={suggestion}
@@ -542,18 +496,20 @@ const HerbalChatBubble: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={toggleVoiceInput}
-                    className={`flex-shrink-0 ${isListening ? 'text-red-500 animate-pulse' : 'text-muted-foreground'}`}
+                    className={`flex-shrink-0 ${isListening && !isPushToTalkActive ? 'text-red-500 animate-pulse' : 'text-muted-foreground'}`}
+                    title="Click to toggle voice input"
                   >
-                    {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    {isListening && !isPushToTalkActive ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </Button>
                 )}
                 <Input
+                  ref={inputRef}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={isListening ? 'Listening with ElevenLabs...' : 'Ask about herbs, remedies...'}
+                  placeholder={isPushToTalkActive ? 'Listening...' : isListening ? 'Speaking...' : 'Type or hold Space to talk...'}
                   className="flex-1 bg-muted border-0"
-                  disabled={isLoading}
+                  disabled={isLoading || isPushToTalkActive}
                 />
                 <Button
                   onClick={sendMessage}
