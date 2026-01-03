@@ -89,20 +89,28 @@ export function useWakeWordDetection(options: UseWakeWordDetectionOptions = {}):
   const checkWakeWord = useCallback((transcript: string): boolean => {
     const normalized = normalizeText(transcript);
     const normalizedWakeWord = normalizeText(wakeWord);
-    
-    // Check for exact match or if transcript contains wake word
-    // Also check common variations
-    const variations = [
-      normalizedWakeWord,
-      'hey herbiverse',
-      'hey herby verse',
-      'hey herbie verse',
-      'hey herb inverse',
-      'a herbiverse',
-      'hey herbverse',
+
+    // Make matching resilient to spacing / common misrecognitions.
+    const t = normalized.replace(/\s+/g, '');
+    const w = normalizedWakeWord.replace(/\s+/g, '');
+
+    // Prefer a distinctive keyword match ("herbiverse" is uncommon, good signal).
+    const keywordsNoSpaces = [
+      w,
+      'heyherbiverse',
+      'herbiverse',
+      'heyherbverse',
+      'herbverse',
+      'heyherbalverse',
+      'herbalverse',
+      'heyherbiverseai',
+      'herbiverseai',
+      // very common speech-recognition mishears
+      'heyherbivores',
+      'herbivores',
     ];
-    
-    return variations.some(variation => normalized.includes(variation));
+
+    return keywordsNoSpaces.some((k) => k && t.includes(k));
   }, [wakeWord]);
 
   const startRecognition = useCallback(() => {

@@ -207,6 +207,16 @@ const HerbalChatBubble: React.FC = () => {
     }
   }, [isOpen, wakeWordEnabled, startWakeWordDetection, stopWakeWordDetection]);
 
+  // Important: ensure the mic isn't held by ElevenLabs STT while the chat is closed,
+  // otherwise wake word listening may fail or stop immediately.
+  useEffect(() => {
+    if (!isOpen && isListening) {
+      stopListening();
+      setWakeWordTriggered(false);
+      shouldAutoSendRef.current = false;
+    }
+  }, [isOpen, isListening, stopListening]);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
@@ -388,7 +398,17 @@ const HerbalChatBubble: React.FC = () => {
                     <VolumeX className="h-4 w-4" />
                   )}
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    // Release mic + reset wake-word flow when closing.
+                    if (isListening) stopListening();
+                    setWakeWordTriggered(false);
+                    shouldAutoSendRef.current = false;
+                    setIsOpen(false);
+                  }}
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
