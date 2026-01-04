@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import WaveformAnimation from './WaveformAnimation';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Message {
   id: string;
@@ -27,6 +28,7 @@ const HerbalChatBubble: React.FC = () => {
   const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   // Push-to-talk refs
   const pttActiveRef = useRef(false);
@@ -175,6 +177,39 @@ const HerbalChatBubble: React.FC = () => {
     }, 300);
   }, [isListening, stopListening, doSendMessage]);
 
+  // Mobile PTT handlers
+  const handleMobilePTTStart = useCallback(() => {
+    if (pttActiveRef.current) return;
+    
+    pttActiveRef.current = true;
+    pttTranscriptRef.current = '';
+    setIsPushToTalkActive(true);
+    
+    if (sttSupported) {
+      startListening();
+    }
+  }, [sttSupported, startListening]);
+
+  const handleMobilePTTEnd = useCallback(() => {
+    if (!pttActiveRef.current) return;
+    
+    pttActiveRef.current = false;
+    setIsPushToTalkActive(false);
+    
+    if (isListening) {
+      stopListening();
+    }
+    
+    // Small delay to ensure final transcript is captured
+    setTimeout(() => {
+      const finalText = pttTranscriptRef.current.trim();
+      if (finalText) {
+        doSendMessage(finalText, true);
+      }
+      pttTranscriptRef.current = '';
+    }, 300);
+  }, [isListening, stopListening, doSendMessage]);
+
   // Add/remove keyboard listeners
   useEffect(() => {
     if (isOpen) {
@@ -297,7 +332,7 @@ const HerbalChatBubble: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-foreground">Herbiverse AI</h3>
                   <p className="text-xs text-muted-foreground">
-                    {isSpeaking ? '🔊 Speaking...' : isPushToTalkActive ? '🎤 Listening...' : 'Hold Space to talk'}
+                    {isSpeaking ? '🔊 Speaking...' : isPushToTalkActive ? '🎤 Listening...' : isMobile ? 'Hold mic to talk' : 'Hold Space to talk'}
                   </p>
                 </div>
               </div>
@@ -408,8 +443,17 @@ const HerbalChatBubble: React.FC = () => {
                   </p>
                   <div className="bg-muted/50 rounded-lg px-4 py-2 mb-4">
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Keyboard className="h-3 w-3" />
-                      Hold <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] font-mono">Space</kbd> to speak
+                      {isMobile ? (
+                        <>
+                          <Mic className="h-3 w-3" />
+                          Hold the mic button to speak
+                        </>
+                      ) : (
+                        <>
+                          <Keyboard className="h-3 w-3" />
+                          Hold <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] font-mono">Space</kbd> to speak
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2 justify-center">
@@ -491,7 +535,41 @@ const HerbalChatBubble: React.FC = () => {
             {/* Input area */}
             <div className="p-4 border-t border-border bg-background/50">
               <div className="flex items-center gap-2">
-                {sttSupported && (
+                {/* Mobile Push-to-Talk button */}
+                {isMobile && sttSupported && (
+                  <Button
+                    variant={isPushToTalkActive ? "default" : "outline"}
+                    size="icon"
+                    className={`flex-shrink-0 transition-all touch-none select-none ${
+                      isPushToTalkActive 
+                        ? 'bg-red-500 hover:bg-red-600 text-white scale-110 animate-pulse' 
+                        : 'text-muted-foreground hover:text-primary'
+                    }`}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      handleMobilePTTStart();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleMobilePTTEnd();
+                    }}
+                    onTouchCancel={(e) => {
+                      e.preventDefault();
+                      handleMobilePTTEnd();
+                    }}
+                    onMouseDown={handleMobilePTTStart}
+                    onMouseUp={handleMobilePTTEnd}
+                    onMouseLeave={() => {
+                      if (isPushToTalkActive) handleMobilePTTEnd();
+                    }}
+                    title="Hold to talk"
+                  >
+                    <Mic className={`h-5 w-5 ${isPushToTalkActive ? 'animate-pulse' : ''}`} />
+                  </Button>
+                )}
+                
+                {/* Desktop click-to-toggle voice input */}
+                {!isMobile && sttSupported && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -502,12 +580,13 @@ const HerbalChatBubble: React.FC = () => {
                     {isListening && !isPushToTalkActive ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </Button>
                 )}
+                
                 <Input
                   ref={inputRef}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={isPushToTalkActive ? 'Listening...' : isListening ? 'Speaking...' : 'Type or hold Space to talk...'}
+                  placeholder={isPushToTalkActive ? 'Listening...' : isListening ? 'Speaking...' : isMobile ? 'Hold mic to talk...' : 'Type or hold Space...'}
                   className="flex-1 bg-muted border-0"
                   disabled={isLoading || isPushToTalkActive}
                 />
