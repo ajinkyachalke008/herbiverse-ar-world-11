@@ -33,8 +33,9 @@ const HerbalChatBubble: React.FC = () => {
   // Push-to-talk refs
   const pttActiveRef = useRef(false);
   const pttTranscriptRef = useRef('');
+  const pttCancelOnConnectRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   // ElevenLabs TTS for natural voice
   const { speak, stop, isSpeaking, isLoading: ttsLoading } = useElevenLabsTTS({
     onError: (error) => {
@@ -123,49 +124,66 @@ const HerbalChatBubble: React.FC = () => {
     }
   });
   
-  const sttSupported = typeof navigator !== 'undefined' && 'mediaDevices' in navigator;
+  const sttSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+
+  const isSpaceKey = (e: KeyboardEvent) =>
+    e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar';
 
   // Push-to-talk: Start listening when spacebar is pressed (in chat)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Only activate if chat is open and spacebar pressed, and not in an input field
+    // Only activate if chat is open and spacebar pressed
     if (!isOpen) return;
-    if (e.code !== 'Space') return;
-    
-    // Don't trigger if focus is on the text input
-    const activeElement = document.activeElement;
-    if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') {
-      return;
+    if (!isSpaceKey(e)) return;
+    if (e.repeat) return;
+
+    // If focus is in a text field, only allow PTT when it's empty (prevents breaking normal typing)
+    const activeElement = document.activeElement as HTMLElement | null;
+    const isTextField =
+      activeElement?.tagName === 'INPUT' ||
+      activeElement?.tagName === 'TEXTAREA' ||
+      (activeElement as HTMLElement | null)?.isContentEditable;
+
+    if (isTextField) {
+      const value = (activeElement as HTMLInputElement | HTMLTextAreaElement).value ?? '';
+      if (value.trim().length > 0) return;
+      // Ensure Space doesn't insert a character
+      activeElement?.blur();
     }
-    
-    // Prevent page scroll
+
+    // Prevent page scroll / focused-button activation
     e.preventDefault();
-    
+
     // Don't restart if already active
     if (pttActiveRef.current) return;
-    
+
+    pttCancelOnConnectRef.current = false;
     pttActiveRef.current = true;
     pttTranscriptRef.current = '';
     setIsPushToTalkActive(true);
-    
+
     if (sttSupported) {
-      startListening();
+      // Note: startListening is async internally; PTT cancel is handled in a separate effect
+      void startListening();
     }
   }, [isOpen, sttSupported, startListening]);
 
   // Push-to-talk: Stop listening and send when spacebar is released
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (e.code !== 'Space') return;
+    if (!isSpaceKey(e)) return;
     if (!pttActiveRef.current) return;
-    
+
     e.preventDefault();
-    
+
+    // If the STT connection hasn't fully started yet, mark cancel so we can stop on connect.
+    if (!isListening) {
+      pttCancelOnConnectRef.current = true;
+    }
+
     pttActiveRef.current = false;
     setIsPushToTalkActive(false);
-    
-    if (isListening) {
-      stopListening();
-    }
-    
+
+    stopListening();
+
     // Small delay to ensure final transcript is captured
     setTimeout(() => {
       const finalText = pttTranscriptRef.current.trim();
@@ -229,9 +247,18 @@ const HerbalChatBubble: React.FC = () => {
       stopListening();
       pttActiveRef.current = false;
       pttTranscriptRef.current = '';
+      pttCancelOnConnectRef.current = false;
       setIsPushToTalkActive(false);
     }
   }, [isOpen, isListening, stopListening]);
+
+  // If user released Space before STT fully connected, stop immediately once it connects.
+  useEffect(() => {
+    if (isListening && !pttActiveRef.current && pttCancelOnConnectRef.current) {
+      pttCancelOnConnectRef.current = false;
+      stopListening();
+    }
+  }, [isListening, stopListening]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -326,15 +353,25 @@ const HerbalChatBubble: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
               <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center ${isSpeaking ? 'animate-pulse' : ''}`}>
-                  <Bot className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Herbiverse AI</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {isSpeaking ? '🔊 Speaking...' : isPushToTalkActive ? '🎤 Listening...' : isMobile ? 'Hold mic to talk' : 'Hold Space to talk'}
-                  </p>
-                </div>
+                 <div className={`h-10 w-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center ${isSpeaking || isListening ? 'animate-pulse' : ''}`}
+                 >
+                   <Bot className="h-5 w-5 text-primary-foreground" />
+                 </div>
+                 <div>
+                   <h3 className="font-semibold text-foreground">Herbiverse AI</h3>
+                   <p className="text-xs text-muted-foreground">
+                     {isSpeaking
+                       ? '🔊 Speaking...'
+                       : isPushToTalkActive
+                         ? '🎤 Recording...'
+                         : isListening
+                           ? '🎤 Recording...'
+                           : isMobile
+                             ? 'Hold mic to talk'
+                             : 'Hold Space to talk'}
+                   </p>
+                 </div>
+
               </div>
               <div className="flex items-center gap-2">
                 <Button
