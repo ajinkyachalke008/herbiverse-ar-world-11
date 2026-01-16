@@ -22,10 +22,10 @@ const Navigation = () => {
   const navItems = [
     { name: "Scan Plant", href: "/" },
     { name: "Symptom Checker", href: "/symptom-checker" },
-    { name: "Voice Assistant", href: "/voice-assistant" },
-    { name: "Herb Database", href: "/herbal-database" },
-    { name: "Earth Scan", href: "/earth-scan" },
-    { name: "Community", href: "/community" },
+    { name: "Recipes", href: "/herbal-recipes" },
+    { name: "Calendar", href: "/seasonal-calendar" },
+    { name: "Dosage", href: "/dosage-calculator" },
+    { name: "Tips", href: "/wellness-tips" },
   ];
 
   return (

@@ -15,6 +15,11 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import MyScans from "./pages/MyScans";
 import Community from "./pages/Community";
+import SeasonalCalendar from "./pages/SeasonalCalendar";
+import HerbalRecipes from "./pages/HerbalRecipes";
+import DosageCalculator from "./pages/DosageCalculator";
+import WellnessTips from "./pages/WellnessTips";
+import OfflineMode from "./pages/OfflineMode";
 import NotFound from "./pages/NotFound";
 import HerbalChatBubble from "./components/HerbalChatBubble";
 
@@ -39,6 +44,11 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/my-scans" element={<MyScans />} />
             <Route path="/community" element={<Community />} />
+            <Route path="/seasonal-calendar" element={<SeasonalCalendar />} />
+            <Route path="/herbal-recipes" element={<HerbalRecipes />} />
+            <Route path="/dosage-calculator" element={<DosageCalculator />} />
+            <Route path="/wellness-tips" element={<WellnessTips />} />
+            <Route path="/offline-mode" element={<OfflineMode />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
