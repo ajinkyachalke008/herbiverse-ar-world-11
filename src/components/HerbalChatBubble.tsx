@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useElevenLabsSTT } from '@/hooks/useElevenLabsSTT';
-import { useElevenLabsTTS } from '@/hooks/useElevenLabsTTS';
+import { useElevenLabsTTS, ELEVENLABS_VOICES } from '@/hooks/useElevenLabsTTS';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import WaveformAnimation from './WaveformAnimation';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import VoiceSelector from './VoiceSelector';
 
 interface Message {
   id: string;
@@ -26,9 +28,11 @@ const HerbalChatBubble: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
+  const [selectedVoiceId, setSelectedVoiceId] = useState(ELEVENLABS_VOICES.george);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { vibrateStart, vibrateStop, vibrateSuccess } = useHapticFeedback();
 
   // Push-to-talk refs
   const pttActiveRef = useRef(false);
@@ -38,6 +42,7 @@ const HerbalChatBubble: React.FC = () => {
 
   // ElevenLabs TTS for natural voice
   const { speak, stop, isSpeaking, isLoading: ttsLoading } = useElevenLabsTTS({
+    voiceId: selectedVoiceId,
     onError: (error) => {
       console.error('TTS error:', error);
       toast.error('Voice playback failed');
@@ -195,9 +200,12 @@ const HerbalChatBubble: React.FC = () => {
     }, 300);
   }, [isListening, stopListening, doSendMessage]);
 
-  // Mobile PTT handlers
+  // Mobile PTT handlers with haptic feedback
   const handleMobilePTTStart = useCallback(() => {
     if (pttActiveRef.current) return;
+    
+    // Haptic feedback on PTT start
+    vibrateStart();
     
     pttActiveRef.current = true;
     pttTranscriptRef.current = '';
@@ -206,10 +214,13 @@ const HerbalChatBubble: React.FC = () => {
     if (sttSupported) {
       startListening();
     }
-  }, [sttSupported, startListening]);
+  }, [sttSupported, startListening, vibrateStart]);
 
   const handleMobilePTTEnd = useCallback(() => {
     if (!pttActiveRef.current) return;
+    
+    // Haptic feedback on PTT stop
+    vibrateStop();
     
     pttActiveRef.current = false;
     setIsPushToTalkActive(false);
@@ -222,11 +233,13 @@ const HerbalChatBubble: React.FC = () => {
     setTimeout(() => {
       const finalText = pttTranscriptRef.current.trim();
       if (finalText) {
+        // Success haptic when message is sent
+        vibrateSuccess();
         doSendMessage(finalText, true);
       }
       pttTranscriptRef.current = '';
     }, 300);
-  }, [isListening, stopListening, doSendMessage]);
+  }, [isListening, stopListening, doSendMessage, vibrateStop, vibrateSuccess]);
 
   // Add/remove keyboard listeners
   useEffect(() => {
@@ -373,7 +386,12 @@ const HerbalChatBubble: React.FC = () => {
                  </div>
 
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <VoiceSelector
+                  selectedVoiceId={selectedVoiceId}
+                  onVoiceChange={setSelectedVoiceId}
+                  disabled={isSpeaking || ttsLoading}
+                />
                 <Button
                   variant="ghost"
                   size="icon"
