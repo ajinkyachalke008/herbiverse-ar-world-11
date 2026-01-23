@@ -52,8 +52,6 @@ Guidelines:
       ...messages
     ];
 
-    console.log('Calling Lovable AI (Gemini 2.5 Flash) with', messages.length, 'messages');
-
     if (stream) {
       // Streaming response
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -70,8 +68,6 @@ Guidelines:
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Lovable AI error:', response.status, errorText);
         if (response.status === 429) {
           return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
             status: 429,
@@ -109,8 +105,6 @@ Guidelines:
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Lovable AI error:', response.status, errorText);
         if (response.status === 429) {
           return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
             status: 429,
@@ -129,14 +123,11 @@ Guidelines:
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
 
-      console.log('Gemini 2.5 Flash response received, length:', content.length);
-
       return new Response(JSON.stringify({ content }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
   } catch (error) {
-    console.error('Error in voice assistant function:', error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error' 
     }), {

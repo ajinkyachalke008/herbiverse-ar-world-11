@@ -28,7 +28,6 @@ export function useElevenLabsSTT(options: UseElevenLabsSTTOptions = {}): UseElev
   const streamRef = useRef<MediaStream | null>(null);
 
   const stopListening = useCallback(() => {
-    console.log('Stopping ElevenLabs STT...');
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
@@ -53,14 +52,12 @@ export function useElevenLabsSTT(options: UseElevenLabsSTTOptions = {}): UseElev
     setPartialTranscript('');
 
     try {
-      console.log('Getting ElevenLabs scribe token...');
       const { data, error: tokenError } = await supabase.functions.invoke('elevenlabs-scribe-token');
       
       if (tokenError || !data?.token) {
         throw new Error(tokenError?.message || 'Failed to get token');
       }
 
-      console.log('Got token, requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -70,15 +67,12 @@ export function useElevenLabsSTT(options: UseElevenLabsSTTOptions = {}): UseElev
         }
       });
       streamRef.current = stream;
-
-      console.log('Connecting to ElevenLabs WebSocket...');
       const ws = new WebSocket(
         `wss://api.elevenlabs.io/v1/speech-to-text/realtime?token=${data.token}&model_id=scribe_v2_realtime`
       );
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('ElevenLabs WebSocket connected');
         setIsListening(true);
 
         // Send session config
@@ -129,7 +123,6 @@ export function useElevenLabsSTT(options: UseElevenLabsSTTOptions = {}): UseElev
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('ElevenLabs STT message:', data.type);
 
           if (data.type === 'partial_transcript') {
             setPartialTranscript(data.text || '');
@@ -139,30 +132,26 @@ export function useElevenLabsSTT(options: UseElevenLabsSTTOptions = {}): UseElev
             setPartialTranscript('');
             onResult?.(finalText);
           } else if (data.type === 'error') {
-            console.error('ElevenLabs STT error:', data);
             setError(data.message || 'Transcription error');
             onError?.(data.message || 'Transcription error');
           }
-        } catch (e) {
-          console.error('Error parsing WebSocket message:', e);
+        } catch {
+          // Ignore parse errors
         }
       };
 
-      ws.onerror = (event) => {
-        console.error('ElevenLabs WebSocket error:', event);
+      ws.onerror = () => {
         setError('Connection error');
         onError?.('Connection error');
         stopListening();
       };
 
       ws.onclose = () => {
-        console.log('ElevenLabs WebSocket closed');
         setIsListening(false);
       };
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start listening';
-      console.error('Error starting ElevenLabs STT:', err);
       setError(errorMessage);
       onError?.(errorMessage);
       stopListening();

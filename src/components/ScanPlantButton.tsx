@@ -140,7 +140,6 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
     
     // On mobile, use native camera input for instant access
     if (isMobile) {
-      console.log('📱 Mobile detected - using native camera input');
       nativeCameraInputRef.current?.click();
     } else {
       // On desktop, use web camera API
@@ -153,16 +152,12 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
     setIsCameraLoading(true);
     setError(null);
     
-    console.log('🎥 Attempting camera access...');
     
     try {
       // Check if camera is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.error('❌ Camera API not supported');
         throw new Error('Camera not supported');
       }
-
-      console.log('✅ Camera API supported, requesting stream...');
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -172,16 +167,13 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
         } 
       });
       
-      console.log('✅ Camera stream obtained:', stream);
       streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setShowCamera(true);
-        console.log('✅ Camera view activated');
       }
     } catch (err: any) {
-      console.error('❌ Camera access error:', err.name, err.message);
       
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setError(text[language].denied);
@@ -375,7 +367,6 @@ const ScanPlantButton: React.FC<ScanPlantButtonProps> = ({
         duration: 5000,
       });
     } catch (err) {
-      console.error('Plant identification error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to identify plant';
       setError(errorMessage);
       
