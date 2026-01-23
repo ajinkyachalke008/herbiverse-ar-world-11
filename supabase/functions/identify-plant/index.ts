@@ -24,8 +24,6 @@ serve(async (req) => {
       throw new Error("Lovable API key not configured");
     }
 
-    console.log("Processing plant identification request with Lovable AI...");
-
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -74,7 +72,6 @@ If you cannot confidently identify the plant, set confidence to "low" and explai
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
       if (response.status === 429) {
         throw new Error('Rate limit exceeded, please try again later.');
       }
@@ -85,8 +82,6 @@ If you cannot confidently identify the plant, set confidence to "low" and explai
     }
 
     const data = await response.json();
-    console.log("Received response from Lovable AI (Gemini 2.5 Flash)");
-    
     const content = data.choices[0].message.content;
     
     // Extract JSON from the response (it might be wrapped in markdown code blocks)
@@ -98,8 +93,7 @@ If you cannot confidently identify the plant, set confidence to "low" and explai
       } else {
         plantData = JSON.parse(content);
       }
-    } catch (parseError) {
-      console.error("Error parsing plant data:", parseError);
+    } catch {
       // If parsing fails, create a structured response from the text
       plantData = {
         commonName: "Unable to identify",
@@ -126,7 +120,6 @@ If you cannot confidently identify the plant, set confidence to "low" and explai
       }
     );
   } catch (error) {
-    console.error('Error in identify-plant function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to identify plant';
     return new Response(
       JSON.stringify({ 

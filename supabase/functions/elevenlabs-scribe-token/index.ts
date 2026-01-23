@@ -14,11 +14,8 @@ serve(async (req) => {
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
     
     if (!ELEVENLABS_API_KEY) {
-      console.error('ELEVENLABS_API_KEY not configured');
       throw new Error('ElevenLabs API key not configured');
     }
-
-    console.log('Requesting single-use token from ElevenLabs...');
 
     const response = await fetch(
       'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
@@ -31,19 +28,15 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs token error:', response.status, errorText);
       throw new Error(`Failed to get token: ${response.status}`);
     }
 
     const { token } = await response.json();
-    console.log('Successfully obtained ElevenLabs scribe token');
 
     return new Response(JSON.stringify({ token }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in elevenlabs-scribe-token:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),
