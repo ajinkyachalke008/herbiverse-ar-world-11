@@ -79,8 +79,6 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Processing symptom query:", symptoms.substring(0, 100));
-
     // Build user context string if provided
     let contextStr = "";
     if (user_context) {
@@ -124,8 +122,6 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
       throw new Error("Failed to analyze symptoms");
     }
 
@@ -143,13 +139,9 @@ serve(async (req) => {
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim();
       result = JSON.parse(jsonStr);
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
-      console.log("Raw content:", content);
+    } catch {
       throw new Error("Failed to process recommendations");
     }
-
-    console.log("Successfully generated recommendations");
 
     return new Response(JSON.stringify({
       success: true,
@@ -159,7 +151,6 @@ serve(async (req) => {
     });
 
   } catch (error: unknown) {
-    console.error("Symptom checker error:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
     return new Response(JSON.stringify({
       success: false,

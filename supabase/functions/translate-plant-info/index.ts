@@ -95,8 +95,6 @@ Return the translated data as JSON with the exact same structure.`;
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
@@ -115,7 +113,6 @@ Return the translated data as JSON with the exact same structure.`;
     );
 
   } catch (error) {
-    console.error('Translation error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Translation failed' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
